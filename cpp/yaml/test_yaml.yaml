@@ -1,0 +1,10 @@
+foo: bar
+someint: 123
+blah:
+  1: int
+  3: float
+paris:
+  - banana
+  - orange
+somebool: true
+anotherbool: false

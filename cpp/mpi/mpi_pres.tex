@@ -1,0 +1,270 @@
+    \documentclass[svgnames]{beamer}
+\usetheme{Warsaw}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{verbatim}
+\usepackage{listings}
+\title{Introduction to MPI}
+\author{Hugh Perkins, Tsinghua University}
+\begin{document}
+
+\maketitle
+
+\frame {
+    \frametitle{Contents}
+    \begin{itemize}
+        \item What is MPI?  What can it do?
+        \item MPI operations
+        \item Handling matrices, dynamic-sized data
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{What is MPI?}
+    \begin{itemize}
+        \item C library
+        \item easy to parallelize programs
+        \item works for clusters
+        \item and for a single multicore node
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{How does it compare with OpenMP?}
+    \begin{itemize}
+        \item OpenMP works only on a single node, cant handle clusters
+        \item OpenMP slightly easier
+        \item OpenMP slightly faster, on a single node
+        \item Possible to do hybrid MPI/OpenMP
+    \end{itemize}
+}
+
+\frame {
+     \frametitle{What can MPI do?}
+     \begin{itemize}
+         \item start all the processes, across the entire cluster
+         \item handle process tear down, termination
+         \item get data from one node to the others
+         \item aggregate data from all nodes to one node
+         \item display stdout from all nodes
+     \end{itemize}
+}
+
+\frame {
+     \frametitle{What doesnt MPI do?}
+     \begin{itemize}
+          \item automatically make a serial algorithm parallel
+          \item automatically parallelize serial code
+          \item replicate data and code across nodes
+          \item provide fault tolerance
+     \end{itemize}
+}
+
+\frame {
+    \frametitle {Key MPI operations}
+    \begin{itemize}
+        \item send data from one node to the others (\emph{"broadcast"})
+        \item aggregate data from all nodes onto one node (\emph{"reduce"})
+        \item aggregate data from all nodes onto all nodes (\emph{"Allreduce"})
+    \end{itemize} 
+}
+
+\frame {
+     \frametitle{Description of multiprocess architecture}
+     (on whiteboard)
+}
+
+\frame {
+     \frametitle{How to run an MPI program?}
+     \begin{itemize}
+         \item mpirun.mpich2 -hosts juncluster4,juncluster1 -np 24 ./mysuperprogram
+        \begin{itemize}
+             \item juncluster4 is node 0
+             \item juncluster1 is node 1
+            \begin{itemize}
+                 \item can put as many hostnames as you want
+             \end{itemize}
+             \item 24 processes will run in total
+            \begin{itemize}
+                \item (so 12 per node)
+             \end{itemize}
+         \end{itemize}
+     \end{itemize}
+}
+
+\frame {
+    \frametitle{Housekeeping}
+    \begin{itemize}
+        \item Run "MPI\_Init( \&argc, \&argv )" at the start
+        \item Run "MPI\_Finalize()" at the end
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{Demo 1: simple mpi program}
+    Demo 1: simple mpi program
+    \begin{itemize}
+       \item Init, Finalize
+       \item Comm\_rank, Comm\_size
+       \item stdout out of order
+       \item if( rank == 0 ) \{ \}
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{Get node information}
+    \begin{itemize}
+    \item MPI\_Comm\_size: how many nodes
+    \item MPI\_Comm\_rank: this process node number
+    \end{itemize}
+}
+
+\frame{ 
+    \frametitle{Communicators}
+    \begin{itemize}
+        \item A 'communicator' is a set of nodes
+        \item Just use MPI\_COMM\_WORLD, meaning 'all nodes'
+    \end{itemize}
+}
+
+\frame{ 
+    \frametitle{broadcast}
+    \begin{itemize}
+        \item send an array from one node to the others
+        \item use node 0 as "master node"
+        \item send from master to others
+        \item MPI\_Bcast( (void *)somearray, len, MPI\_DOUBLE, 0, MPI\_COMM\_WORLD ); 
+        \begin{itemize}
+            \item send a double array
+            \item ...of length 'len'
+            \item ... from node 0 to the others
+        \end{itemize}
+        \item somearray on node 0 copied to somearray on the child nodes
+        \item \emph{same command runs on all nodes}
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{Demo 2: bcast}
+    Demo 2: bcast demo
+}
+
+\frame{ 
+    \frametitle{reduce}
+    \begin{itemize}
+        \item aggregate array from all nodes onto master
+        \item MPI\_Reduce( (void *)sendarray, (void *)receivearray, len, MPI\_DOUBLE, MPI\_SUM, 0, MPI\_COMM\_WORLD ); 
+        \begin{itemize}
+            \item reduce double array 'sendarray'
+            \item ...of length 'len'
+            \item ... by doing 'SUM'
+            \item ... onto 'receivearray' on node 0
+        \end{itemize}
+        \item receivearray on node 0 contains the sum of sendarray from all nodes
+        \item \emph{same command runs on all nodes}
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{Demo 3: reduce}
+    Demo 3: reduce demo
+}
+
+\frame {
+    \frametitle{Reduce operations}
+    \begin{itemize}
+        \item Useful reduce operations:
+    \begin{itemize}
+        \item MPI\_SUM
+        \item MPI\_MAX
+        \item MPI\_MIN  
+        \item ...
+    \end{itemize}
+    \end{itemize}
+}
+
+\frame{ 
+    \frametitle{Allreduce}
+    \begin{itemize}
+        \item aggregate array from all nodes onto all nodes
+        \item MPI\_Reduce( (void *)sendarray, (void *)receivearray, len, MPI\_DOUBLE, MPI\_SUM, MPI\_COMM\_WORLD ); 
+        \begin{itemize}
+            \item reduce double array 'sendarray'
+            \item ...of length 'len'
+            \item ... by doing 'SUM'
+            \item ... onto 'receivearray' on all nodes
+        \end{itemize}
+        \item \emph{same command runs on all nodes}
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{Demo 4: Allreduce}
+    Demo 4: allreduce demo
+}
+
+\frame {
+    \frametitle{One last operation: barrier}
+    \begin{itemize}
+         \item barrier waits for all nodes before continuing
+         \item not needed often
+         \item but good for making stdout cleaner
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{Demo 5: barrier}
+    Demo 5: barrier demo
+}
+
+\frame {
+    \frametitle{Handling matrices, complex data}
+    \begin{itemize}
+        \item MPI really good for 1d arrays
+        \item It sucks at 2d
+        \item So give it 1d arrays
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{How to convert a 2d array into a 1d array?}
+    \begin{itemize}
+        \item Copy?  Slow...
+        \item Use MPI custom data types.  Slow, complicated...
+        \item Put the 2d array into contiguous memory.  Yes!  How?
+    \end{itemize}
+}
+
+\begin{frame}[fragile]
+    \frametitle{Allocate 2d array in contiguous memory}
+    \begin{lstlisting}
+int N = 5;
+double base_1d[N*N];
+double *contained_2d[N];
+for( int i = 0; i < N; i++ ) {
+    contained_2d[i] = &(base_1d[i*N]);
+}
+    \end{lstlisting}
+\end{frame}
+
+\frame {
+    \frametitle{Dynamically sized arrays}
+    \begin{itemize}
+         \item First transmit the array size
+          \item ... then transmit the array itself
+    \end{itemize}
+}
+
+\frame {
+    \frametitle{Conclusion}
+    Looked at:
+    \begin{itemize}
+        \item What is MPI?  What can it do?
+        \item MPI operations
+        \item Handling matrices, dynamic-sized data
+    \end{itemize}
+}
+
+\end{document}
+
