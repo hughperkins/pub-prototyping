@@ -1,0 +1,104 @@
+(env3) ubuntu@peach:~/prototyping/pyopencl$ python testpyopencl.py 
+context <pyopencl.Context at 0x2894c60 on <pyopencl.Device 'GeForce 940M' on 'NVIDIA CUDA' at 0x29a1980>>
+run kernel...
+kernel done
+diff 5.2426438331604
+
+(env3) ubuntu@peach:~/prototyping/pyopencl$ python testpycuda.py 
+a.shape (99999744,)
+copy to gpu...
+*** compiler output in /tmp/tmpxbqvddtb
+run kernel...
+kernel done
+diff 5.243024587631226
+
+
+div=1e2:
+(env3) ubuntu@peach:~/prototyping/pyopencl$ python testpycuda.py 
+a.shape (999424,)
+copy to gpu...
+run kernel...
+kernel done
+diff 0.5323915481567383
+(env3) ubuntu@peach:~/prototyping/pyopencl$ python testpyopencl.py 
+context <pyopencl.Context at 0x26fd4f0 on <pyopencl.Device 'GeForce 940M' on 'NVIDIA CUDA' at 0x28a45e0>>
+run kernel...
+kernel done
+diff 0.9531064033508301
+
+
+cl:
+.entry sum(
+	.param .u64 .ptr .global .align 4 sum_param_0
+)
+{
+	.reg .f32 	%f<3>;
+	.reg .b32 	%r<7>;
+	.reg .b64 	%rd<4>;
+
+
+	ld.param.u64 	%rd1, [sum_param_0];
+	
+	mov.b32	%r1, %envreg3;
+	mov.u32 	%r2, %ntid.x;
+	mov.u32 	%r3, %ctaid.x;
+	mad.lo.s32 	%r4, %r3, %r2, %r1;
+	mov.u32 	%r5, %tid.x;
+	add.s32 	%r6, %r4, %r5;
+	
+	mul.wide.s32 	%rd2, %r6, 4;
+	add.s64 	%rd3, %rd1, %rd2;
+	ld.global.f32 	%f1, [%rd3];
+	add.f32 	%f2, %f1, 0f3F800000;
+	st.global.f32 	[%rd3], %f2;
+	ret;
+}
+
+cuda2:
+.visible .entry doublify(
+	.param .u64 doublify_param_0
+)
+{
+	.reg .f32 	%f<3>;
+	.reg .b32 	%r<5>;
+	.reg .b64 	%rd<5>;
+
+
+	ld.param.u64 	%rd1, [doublify_param_0];
+	cvta.to.global.u64 	%rd2, %rd1;
+	mov.u32 	%r1, %ctaid.x;
+	mov.u32 	%r2, %ntid.x;
+	mov.u32 	%r3, %tid.x;
+	mad.lo.s32 	%r4, %r2, %r1, %r3;
+
+	mul.wide.u32 	%rd3, %r4, 4;
+	add.s64 	%rd4, %rd2, %rd3;
+	ld.global.f32 	%f1, [%rd4];
+	add.f32 	%f2, %f1, 0f3F800000;
+	st.global.f32 	[%rd4], %f2;
+	ret;
+}
+
+cuda:
+
+.visible .entry doublify(
+	.param .u64 doublify_param_0
+)
+{
+	.reg .f32 	%f<3>;
+	.reg .b32 	%r<2>;
+	.reg .b64 	%rd<5>;
+
+
+	ld.param.u64 	%rd1, [doublify_param_0];
+	
+	cvta.to.global.u64 	%rd2, %rd1;
+	mov.u32 	%r1, %tid.x;
+	
+	mul.wide.s32 	%rd3, %r1, 4;
+	add.s64 	%rd4, %rd2, %rd3;
+	ld.global.f32 	%f1, [%rd4];
+	add.f32 	%f2, %f1, 0f3F800000;
+	st.global.f32 	[%rd4], %f2;
+	ret;
+}

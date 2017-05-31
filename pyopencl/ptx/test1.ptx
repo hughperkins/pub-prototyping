@@ -1,0 +1,7 @@
+.version 4.3
+.target sm_50
+
+.entry test1()
+{
+}
+
