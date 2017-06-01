@@ -1,0 +1,12 @@
+# For list of Tensorflow authors, please see the main fork of Tensorflow
+# at https://gitub.com/tensorflow/tensorflow, though the list at the time
+# of forking looked like:
+
+Google Inc.
+Yuan Tang terrytangyuan@gmail.com
+
+# This fork is a derivative of the main tensorflow distribution, so the
+# list of authors is that of the main distribution, plus the author of this
+# fork, ie:
+
+Hugh Perkins hughperkins@gmail.com

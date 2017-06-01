@@ -2,13 +2,18 @@ cmake_minimum_required(VERSION 2.8)
 
 set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -g")
 
-add_executable(testpthread testpthread.cpp)
-target_link_libraries(testpthread pthread)
+# add_executable(testpthread testpthread.cpp)
+# target_link_libraries(testpthread pthread)
 
-add_executable(testlambda testlambda.cpp)
+# add_executable(testlambda testlambda.cpp)
 
-add_executable(test_uniqueptr test_uniqueptr.cpp)
-add_executable(testcast testcast.cpp)
+# add_executable(test_uniqueptr test_uniqueptr.cpp)
+# add_executable(testcast testcast.cpp)
+
+add_executable(testphilox testphilox.cpp)
+set(TFDIR "CHANGEME" CACHE STRING "cloned tensorflow repo")
+set(EIGENDIR "CHANGEME" CACHE STRING "cloned eigen repo")
+target_include_directories(testphilox PRIVATE ${TFDIR} ${EIGENDIR})
 
 # add_executable( int int.cpp )
 
