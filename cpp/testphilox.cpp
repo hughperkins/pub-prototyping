@@ -1,4 +1,6 @@
 #include "from_tf/philox_random.h"
+
+#include "tensorflow/core/platform/types.h"
 #include "tensorflow/core//lib/random/random_distributions.h"
 
 #include <iostream>

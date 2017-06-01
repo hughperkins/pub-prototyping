@@ -22,7 +22,11 @@ limitations under the License.
 
 #include <stdlib.h>
 
-#include "tensorflow/core/platform/types.h"
+// #include "tensorflow/core/platform/types.h"
+
+typedef uint32_t uint32;
+typedef int32_t int32;
+typedef uint64_t uint64;
 
 // Function qualifiers that need to work on both CPU and GPU.
 // #if defined(__CUDACC__)
@@ -233,12 +237,20 @@ class PhiloxRandom {
   // Helper function for a single round of the underlying Philox algorithm.
   PHILOX_DEVICE_INLINE static ResultType ComputeSingleRound(
       const ResultType& counter, const Key& key) {
+    std::cout << "PhiloxRandom::ComputeSingleRound(counter, key)" << std::endl;
     uint32 lo0;
     uint32 hi0;
+    std::cout << "  counter:";
+    for(int i = 0; i < 4; i++) {
+      std::cout << " " << counter[i]; 
+    }
+    std::cout << std::endl;
+    // std::cout << "  counter[0]=" << counter[0] << std::endl;
     MultiplyHighLow(kPhiloxM4x32A, counter[0], &lo0, &hi0);
 
     uint32 lo1;
     uint32 hi1;
+    // std::cout << "  counter[2]=" << counter[2] << std::endl;
     MultiplyHighLow(kPhiloxM4x32B, counter[2], &lo1, &hi1);
 
     ResultType result;
@@ -246,6 +258,11 @@ class PhiloxRandom {
     result[1] = lo1;
     result[2] = hi0 ^ counter[3] ^ key[1];
     result[3] = lo0;
+    std::cout << "  result:";
+    for(int i = 0; i < 4; i++) {
+      std::cout << " " << result[i];
+    }
+    std::cout << std::endl;
     return result;
   }
 
