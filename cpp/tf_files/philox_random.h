@@ -253,8 +253,10 @@ class PhiloxRandom {
     }
     std::cout << std::endl;
 
-    std::cout << "  pHiloxM4x32A=" << kPhiloxM4x32A << " " << (int)kPhiloxM4x32A <<
-       " kPhiloxM4x32B=" << kPhiloxM4x32B << " " << (int)kPhiloxM4x32B << std::endl;
+    if(counter[0] == 0 && counter[1] == 0) {
+      std::cout << "  pHiloxM4x32A=" << kPhiloxM4x32A << " " << (int)kPhiloxM4x32A <<
+         " kPhiloxM4x32B=" << kPhiloxM4x32B << " " << (int)kPhiloxM4x32B << std::endl;
+    }
 
     // std::cout << "  counter[0]=" << counter[0] << std::endl;
     MultiplyHighLow(kPhiloxM4x32A, counter[0], &lo0, &hi0);
@@ -269,11 +271,11 @@ class PhiloxRandom {
     result[1] = lo1;
     result[2] = hi0 ^ counter[3] ^ key[1];
     result[3] = lo0;
-    std::cout << "  result:";
-    for(int i = 0; i < 4; i++) {
-      std::cout << " " << result[i];
-    }
-    std::cout << std::endl;
+    // std::cout << "  result:";
+    // for(int i = 0; i < 4; i++) {
+    //   std::cout << " " << result[i];
+    // }
+    // std::cout << std::endl;
     return result;
   }
 
