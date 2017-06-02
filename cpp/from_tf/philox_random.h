@@ -240,11 +240,22 @@ class PhiloxRandom {
     std::cout << "PhiloxRandom::ComputeSingleRound(counter, key)" << std::endl;
     uint32 lo0;
     uint32 hi0;
+
     std::cout << "  counter:";
     for(int i = 0; i < 4; i++) {
       std::cout << " " << counter[i]; 
     }
     std::cout << std::endl;
+
+    std::cout << "  key:";
+    for(int i = 0; i < 2; i++) {
+      std::cout << " " << key[i]; 
+    }
+    std::cout << std::endl;
+
+    std::cout << "  pHiloxM4x32A=" << kPhiloxM4x32A << " " << (int)kPhiloxM4x32A <<
+       " kPhiloxM4x32B=" << kPhiloxM4x32B << " " << (int)kPhiloxM4x32B << std::endl;
+
     // std::cout << "  counter[0]=" << counter[0] << std::endl;
     MultiplyHighLow(kPhiloxM4x32A, counter[0], &lo0, &hi0);
 
@@ -267,6 +278,7 @@ class PhiloxRandom {
   }
 
   PHILOX_DEVICE_INLINE void RaiseKey(Key* key) {
+    std::cout << "Raisekey()" << std::endl;
     (*key)[0] += kPhiloxW32A;
     (*key)[1] += kPhiloxW32B;
   }
