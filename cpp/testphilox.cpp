@@ -1,7 +1,7 @@
 #include "tf_files/philox_random.h"
+#include "tf_files/random_distributions.h"
 
 #include "tensorflow/core/platform/types.h"
-#include "tensorflow/core//lib/random/random_distributions.h"
 
 #include "third_party/argparsecpp/argparsecpp.h"
 
@@ -32,12 +32,17 @@ void uniform(int N) {
 
 void normal(int N) {
     // tensorflow::random::PhiloxRandom rand(123);
-    tensorflow::random::PhiloxRandom rand(87654321, 123);
-    uint32_t numbers[N];
-    fill(rand, numbers, 0, N);
-    for(int i=0; i < N; i++) {
-      std::cout << i << ": " << numbers[i] << " " << tensorflow::random::Uint32ToFloat(numbers[i]) << std::endl;
+    tensorflow::random::PhiloxRandom gen(87654321, 123);
+    tensorflow::random::NormalDistribution<tensorflow::random::PhiloxRandom, float> normal;
+    tensorflow::random::Array<float, gen.kResultElementCount> res = normal(&gen);
+    for(int i = 0; i < gen.kResultElementCount; i++) {
+      std::cout << "  " << i << ": " << res[i] << std::endl;
     }
+    // uint32_t numbers[N];
+    // fill(gen, numbers, 0, N);
+    // for(int i=0; i < N; i++) {
+    //   std::cout << i << ": " << numbers[i] << " " << tensorflow::random::Uint32ToFloat(numbers[i]) << std::endl;
+    // }
 }
 
 int main(int argc, char *argv[]) {

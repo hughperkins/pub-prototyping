@@ -188,6 +188,11 @@ class PhiloxRandom {
     counter = ComputeSingleRound(counter, key);
     RaiseKey(&key);
     counter = ComputeSingleRound(counter, key);
+    std::cout << "  counter:";
+    for(int i = 0; i < 4; i++) {
+      std::cout << " " << counter[i]; 
+    }
+    std::cout << std::endl;
 
     SkipOne();
 
