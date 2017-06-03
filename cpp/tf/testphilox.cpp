@@ -3,7 +3,7 @@
 
 #include "tensorflow/core/platform/types.h"
 
-#include "third_party/argparsecpp/argparsecpp.h"
+#include "../third_party/argparsecpp/argparsecpp.h"
 
 #include <iostream>
 #include <cassert>

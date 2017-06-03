@@ -10,11 +10,6 @@ set(CMAKE_CXX_FLAGS "-std=c++11 -fPIC -g")
 # add_executable(test_uniqueptr test_uniqueptr.cpp)
 # add_executable(testcast testcast.cpp)
 
-add_executable(testphilox testphilox.cpp ../third_party/argparsecpp/argparsecpp.cpp)
-set(TFDIR "CHANGEME" CACHE STRING "cloned tensorflow repo")
-set(EIGENDIR "CHANGEME" CACHE STRING "cloned eigen repo")
-target_include_directories(testphilox PRIVATE ${TFDIR} ${EIGENDIR})
-
 # add_executable( int int.cpp )
 
 # link_directories(/data/install/svmlight/build)
