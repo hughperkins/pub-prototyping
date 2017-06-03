@@ -1,0 +1,99 @@
+#include "EasyCL/EasyCL.h"
+
+#include <iostream>
+#include <stdexcept>
+#include <cstddef>
+
+#include "cocl/cocl.h"
+
+using namespace std;
+
+// string kernelSource = R"(
+// kernel void _z8setValuePfif(global float* data, long data_offset, int idx, float value, local int *scratch) {
+//    data = (global float*)((global char *)data + data_offset);
+
+//    label0:;
+//    int v1 = get_local_id(0);
+//     bool v2 = v1 == 0;
+//     if(v2) {
+//         goto v4;
+//     } else {
+//         goto v5;
+//     }
+//     v4:;
+//     long v6 = idx;
+//     global float* v7 = (&data[v6]);
+//     v7[0] = value;
+//         goto v5;
+//     v5:;
+//     return;
+// }
+// )";
+
+namespace cocl {
+    easycl::CLKernel *getKernelForName(string name, string sourcecode);
+}
+
+extern "C" {
+    void configureKernel(const char *kernelName, const char *devicellsourcecode, const char *clSourcecodeString);
+}
+void setKernelArgStruct(char *pCpuStruct, int structAllocateSize);
+void setKernelArgCharStar(char *memory_as_charstar);
+void setKernelArgInt64(int64_t value);
+void setKernelArgInt32(int value);
+void setKernelArgFloat(float value);
+void kernelGo();
+size_t cudaMemcpy(void *dst, const void *src, size_t bytes, size_t cudaMemcpyKind);
+
+extern "C" {
+    extern const char *s_cuda_sample_nomain_device_cl__Z8setValuePfif;
+    extern const char *cuda_sample_nomain_device_cl;
+    extern const char *cuda_sample_nomain_device_ll;
+}
+
+int main(int argc, char *argv[]) {
+    cl_int err;
+
+    // const char *sourcecode = __opencl_sourcecode__cuda_sample_nomain_device_cl;
+    cout << (void *)s_cuda_sample_nomain_device_cl__Z8setValuePfif << endl;
+    cout << s_cuda_sample_nomain_device_cl__Z8setValuePfif << endl;
+    cout << cuda_sample_nomain_device_ll << endl;
+    cout << "sourcecode " << cuda_sample_nomain_device_cl << endl;
+
+    string kernelName = "_z8setValuePfif";
+
+    cocl::ThreadVars *v = cocl::getThreadVars();
+    cocl::Context *coclContext = v->getContext();
+    easycl::EasyCL *cl = coclContext->cl.get();
+
+    int N = 32;
+    cl_float *a = new cl_float[N];
+    cl_long offset = 0;
+    cl_int pos = 2;
+    cl_float value = 123;
+
+    for(int i = 0; i < N; i++) {
+        a[i] = 555;
+    }
+
+    cocl::Memory *a_memory = cocl::Memory::newDeviceAlloc(N * sizeof(float));
+    cudaMemcpy((void *)a_memory->fakePos, a, N * sizeof(float), cudaMemcpyHostToDevice);
+
+    cudaConfigureCall(
+        dim3(32,1,1),
+        dim3(32,1,1), 0, 0);
+    configureKernel(kernelName.c_str(), "", cuda_sample_nomain_device_cl);
+    setKernelArgCharStar((char *)a_memory->fakePos);
+    setKernelArgInt32(2);
+    setKernelArgFloat(123);
+    kernelGo();
+
+    cudaMemcpy(a, (void *)a_memory->fakePos, N * sizeof(float), cudaMemcpyDeviceToHost);
+    cout << "clfinish finished ok" << endl;
+
+    for(int i = 0; i < 5; i++) {
+        cout << "a[" << i << "]=" << a[i] << endl;
+    }
+
+    return 0;
+}
