@@ -70,10 +70,6 @@ public:
     }
     bool IsInitialized() const;
     float *data();
-    // Tensor data() {
-    //     std::cout << "Tensor::data()" << std::endl;
-    //     return 0;
-    // }
 };
 
 class TensorReference {
@@ -86,10 +82,22 @@ public:
 
 class Stream;
 class Device;
+class GpuDeviceInfo;
 
 class OpDeviceContext {
 public:
+    OpDeviceContext();
+    ~OpDeviceContext();
     Stream *stream();
+    Stream *p_stream;
+};
+
+class Device {
+public:
+    Device();
+    ~Device();
+    GpuDeviceInfo *tensorflow_gpu_device_info();
+    GpuDeviceInfo *p_gpuDeviceInfo;
 };
 
 class OpKernelContext {
@@ -105,8 +113,12 @@ public:
     OpDeviceContext *op_device_context() {
         return &opDeviceContext;
     }
-    Device *device();
+    Device *device() {
+        std::cout << "OpKernelContext::device()" << std::endl;
+        return &_device;
+    }
     OpDeviceContext opDeviceContext;
+    Device _device;
 };
 
 class Stream {
@@ -133,10 +145,45 @@ public:
     EventMgr *event_mgr;
 };
 
-class Device {
-public:
-    GpuDeviceInfo *tensorflow_gpu_device_info();
-};
+OpDeviceContext::OpDeviceContext() {
+    p_stream = new Stream();
+}
+OpDeviceContext::~OpDeviceContext() {
+    delete p_stream;
+    p_stream = 0;
+}
+Stream *OpDeviceContext::stream() {
+    std::cout << "OpDeviceContext::stream()" << std::endl;
+    return p_stream;
+}
+
+Device::Device() {
+    p_gpuDeviceInfo = new GpuDeviceInfo();
+}
+Device::~Device() {
+    delete p_gpuDeviceInfo;
+}
+GpuDeviceInfo *Device::tensorflow_gpu_device_info() {
+    std::cout << "Device::GpuDeviceInfo()" << std::endl;
+    return p_gpuDeviceInfo;
+}
+
+void EventMgr::ThenExecute(Stream *stream, std::function<void ()> fn) {
+    std::cout << "EventMgr::ThenExecute(stream, fn)" << std::endl;
+}
+
+void Stream::ThenMemcpy(perftools::gputools::DeviceMemoryBase *, float *, uint32_t total_bytes) {
+    std::cout << "Stream::ThenMemcpy(memorybase, float *, bytes=" << total_bytes << std::endl;
+}
+
+float *Tensor::data() {
+    std::cout << "Tensor::data()" << std::endl;
+    return 0;
+}
+
+void TensorReference::Unref() const {
+    std::cout << "TensorReference::Unref()" << std::endl;
+}
 
 #define TF_DISALLOW_COPY_AND_ASSIGN(x)
 
