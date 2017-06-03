@@ -33,3 +33,5 @@
 
 build/
 
+# python stuff
+.ipynb_checkpoints/
