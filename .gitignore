@@ -35,3 +35,6 @@ build/
 
 # python stuff
 .ipynb_checkpoints/
+
+CMakeFiles/
+opencl/mac/
