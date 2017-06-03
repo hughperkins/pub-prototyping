@@ -1,0 +1,4 @@
+require 'teststack'
+
+callfoo('bar')
+
