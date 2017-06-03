@@ -197,6 +197,16 @@ void TensorReference::Unref() const {
 }
 
 #define TF_DISALLOW_COPY_AND_ASSIGN(x)
+#define DCHECK(values) \
+if(values == 0) { \
+    std::cout << " values was 0, not initialized" << std::endl; \
+    throw std::runtime_error("values was 0, not initialized"); \
+}
+#define DCHECK_LT(v, limit) \
+if(v >= limit) { \
+    std::cout << v << " more than " << limit << std::endl; \
+    throw std::runtime_error("v not less than limit"); \
+}
 
 #include "tf_files/cuda_device_array_gpu.h"
 #include "tf_files/cuda_device_array.h"
@@ -211,6 +221,7 @@ int main(int argc, char *argv[]) {
         Tensor *result = nullptr;
         TensorShape output_shape = { 4 };
         opKernelContext->allocate_output(i, output_shape, &result);
+        ptrs.Set(i, result->flat<float>().data());
     }
 
     ptrs.Init();
