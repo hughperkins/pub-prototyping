@@ -1,0 +1,39 @@
+const int batchSize = 128;
+const int inputPlanes = 32;
+const int inputSize = 128;
+const int numFilters = 32;
+const int filterSize = 5;
+
+laptop:
+rolled_cpu: 81268ms
+unrolled_cpu: badalloc
+unrolled_clblas: never finishes (after 15 minutes, dmesg error "render ring hung" ...)
+rolled_prop1: 7132ms
+
+aws gpu2.2xlarge
+rolled_cpu: 317578
+unrolled_cpu:
+   unroll: 13762
+   matmult: 205409
+   unroll: 561
+   total: 219732
+unrolled_clblas: invalid command queue
+rolled_prop1: 
+    copy to gpu: 111
+    conv: 2000
+    copy to host: 66
+    total: 2177
+
+const int batchSize = 16;
+const int inputPlanes = 32;
+const int inputSize = 128;
+const int numFilters = 32;
+const int filterSize = 5;
+
+aws gpu2.2xlarge:
+rolled_cpu: 39389ms
+unrolled_cpu: 25623ms
+unrolled_clblas: 2200ms, of which unroll input: 1578ms, gemm: 587ms, roll output: 70ms
+rolled_prop1: 273ms
+
+
