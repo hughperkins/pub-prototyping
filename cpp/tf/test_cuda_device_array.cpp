@@ -12,8 +12,8 @@ typedef int8_t int8;
 template<typename T>
 class DT {
 public:
-    static DT<T> get() {
-        DT<T> v;
+    static const DT<T> get() {
+        const DT<T> v;
         return v;
     }
 };
@@ -21,6 +21,8 @@ public:
 
 #define EIGEN_DEVICE_FUNC __attribute__((device))
 #define EIGEN_STRONG_INLINE __inline__
+
+#define TF_RETURN_IF_ERROR(x) x
 
 class Status {
 public:
@@ -32,8 +34,8 @@ public:
     }
     int value;
 };
-class TensorShape {
-public:
+struct TensorShape {
+    int64_t x;
 };
 class TensorReference {
 public:
@@ -65,30 +67,6 @@ public:
     }
     EventMgr *event_mgr;
 };
-class Device {
-public:
-    GpuDeviceInfo *tensorflow_gpu_device_info();
-};
-class OpDeviceContext {
-public:
-    Stream *stream();
-};
-class OpKernelContext {
-public:
-    Status allocate_temp();
-    OpDeviceContext *op_device_context() {
-        return &opDeviceContext;
-    }
-    Device *device();
-    OpDeviceContext opDeviceContext;
-};
-class Tensor {
-public:
-    template<typename T>
-    T *flat();
-    bool IsInitialized() const;
-};
-#define TF_DISALLOW_COPY_AND_ASSIGN(x)
 class AllocatorAttributes {
 public:
     void set_on_host(bool v) {
@@ -100,6 +78,31 @@ public:
     bool on_host = false;
     bool gpu_compatible;
 };
+class Tensor {
+public:
+    template<typename T>
+    Tensor &flat();
+    bool IsInitialized() const;
+    float *data();
+};
+class Device {
+public:
+    GpuDeviceInfo *tensorflow_gpu_device_info();
+};
+class OpDeviceContext {
+public:
+    Stream *stream();
+};
+class OpKernelContext {
+public:
+    Status allocate_temp(DT<int8_t> dt, TensorShape tensorShape, Tensor *tensor, AllocatorAttributes attrib);
+    OpDeviceContext *op_device_context() {
+        return &opDeviceContext;
+    }
+    Device *device();
+    OpDeviceContext opDeviceContext;
+};
+#define TF_DISALLOW_COPY_AND_ASSIGN(x)
 
 #include "tf_files/cuda_device_array_gpu.h"
 #include "tf_files/cuda_device_array.h"
@@ -108,5 +111,6 @@ int main(int argc, char *argv[]) {
     OpKernelContext opKernelContext;
     int num_split = 4;
     tensorflow::CudaDeviceArrayOnHost<float *> ptrs(&opKernelContext, num_split);
+    ptrs.Init();
     return 0;
 }
