@@ -137,18 +137,22 @@ public:
 class GpuDeviceInfo {
 public:
     GpuDeviceInfo() {
+        std::cout << "GpuDeviceInfo::GpuDeviceInfo()" << std::endl;
         event_mgr = new EventMgr();
     }
     ~GpuDeviceInfo() {
+        std::cout << "GpuDeviceInfo::~GpuDeviceInfo()" << std::endl;
         delete event_mgr;
     }
     EventMgr *event_mgr;
 };
 
 OpDeviceContext::OpDeviceContext() {
+    std::cout << "OpDeviceContext::OpDeviceContext()" << std::endl;
     p_stream = new Stream();
 }
 OpDeviceContext::~OpDeviceContext() {
+    std::cout << "OpDeviceContext::~OpDeviceContext()" << std::endl;
     delete p_stream;
     p_stream = 0;
 }
@@ -158,9 +162,11 @@ Stream *OpDeviceContext::stream() {
 }
 
 Device::Device() {
+    std::cout << "Device::Device()" << std::endl;
     p_gpuDeviceInfo = new GpuDeviceInfo();
 }
 Device::~Device() {
+    std::cout << "Device::~Device()" << std::endl;
     delete p_gpuDeviceInfo;
 }
 GpuDeviceInfo *Device::tensorflow_gpu_device_info() {
