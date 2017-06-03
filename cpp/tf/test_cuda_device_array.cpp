@@ -81,9 +81,16 @@ public:
 class Tensor {
 public:
     template<typename T>
-    Tensor &flat();
+    Tensor flat() {
+        std::cout << "Tensor::flat()" << std::endl;
+        Tensor ret;
+        return ret;
+    }
     bool IsInitialized() const;
-    float *data();
+    float *data() {
+        std::cout << "Tensor::data()" << std::endl;
+        return 0;
+    }
 };
 class Device {
 public:
@@ -95,7 +102,10 @@ public:
 };
 class OpKernelContext {
 public:
-    Status allocate_temp(DT<int8_t> dt, TensorShape tensorShape, Tensor *tensor, AllocatorAttributes attrib);
+    Status allocate_temp(DT<int8_t> dt, TensorShape tensorShape, Tensor *tensor, AllocatorAttributes attrib) {
+        std::cout << "OpKernelContext::allocate_temp()" << std::endl;
+        return Status::OK();
+    }
     OpDeviceContext *op_device_context() {
         return &opDeviceContext;
     }
