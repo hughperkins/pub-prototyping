@@ -110,6 +110,11 @@ public:
         std::cout << "OpKernelContext::allocate_temp(dt, shape, tensor)" << std::endl;
         return Status::OK();
     }
+    Status allocate_output(int i, TensorShape shape, Tensor **p_tensor) {
+        std::cout << "OpKernelContext::allocate_output(i=" << i << ", shape, tensor)" << std::endl;
+        *p_tensor = new Tensor();
+        return Status::OK();
+    }
     OpDeviceContext *op_device_context() {
         return &opDeviceContext;
     }
@@ -198,11 +203,20 @@ void TensorReference::Unref() const {
 
 int main(int argc, char *argv[]) {
     // based loosely on tensorflow split_op.cc:
-    OpKernelContext opKernelContext;
+    OpKernelContext *opKernelContext = new OpKernelContext();;
     int num_split = 4;
-    tensorflow::CudaDeviceArrayOnHost<float *> ptrs(&opKernelContext, num_split);
+    tensorflow::CudaDeviceArrayOnHost<float *> ptrs(opKernelContext, num_split);
+
+    for(int i = 0; i < 1; i++) {
+        Tensor *result = nullptr;
+        TensorShape output_shape = { 4 };
+        opKernelContext->allocate_output(i, output_shape, &result);
+    }
+
     ptrs.Init();
     ptrs.Finalize();
+
+    delete opKernelContext;
     return 0;
 }
 
