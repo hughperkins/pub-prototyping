@@ -46,30 +46,30 @@ class CudaDeviceArrayOnHost {
   CudaDeviceArrayOnHost(OpKernelContext* context, int32 size)
       : context_(context),
         total_bytes_(static_cast<int64>(size) * sizeof(ValueType)) {
-    std::cout << "cuda_device_array.h CudaDeviceArrayOnHost(context, size=" << size << ")" << std::endl;
+    // std::cout << "cuda_device_array.h CudaDeviceArrayOnHost(context, size=" << size << ")" << std::endl;
     data_.size = size;
   }
 
   Status Init() {
-    std::cout << "cuda_device_array.h CudaDeviceArrayOnHost::Init()" << std::endl;
+    // std::cout << "cuda_device_array.h CudaDeviceArrayOnHost::Init()" << std::endl;
     if (inlined()) {
-      std::cout << "  cuda_device_array.h CudaDeviceArrayOnHost::Init() is inlined" << std::endl;
+      // std::cout << "  cuda_device_array.h CudaDeviceArrayOnHost::Init() is inlined" << std::endl;
       values_ = data_.inline_values;
       return Status::OK();
     }
 
-    std::cout << "  cuda_device_array.h CudaDeviceArrayOnHost::Init() not inlined" << std::endl;
+    // std::cout << "  cuda_device_array.h CudaDeviceArrayOnHost::Init() not inlined" << std::endl;
     // Out-of-line: allocate data that will be memcopied.
     AllocatorAttributes attr;
     attr.set_on_host(true);
     attr.set_gpu_compatible(true);
-    std::cout << "  cuda_device_array.h CudaDeviceArrayOnHost::Init() allocating temp" << std::endl;
+    // std::cout << "  cuda_device_array.h CudaDeviceArrayOnHost::Init() allocating temp" << std::endl;
     TF_RETURN_IF_ERROR(
         context_->allocate_temp(DT_INT8, TensorShape{total_bytes_},
                                 &out_of_line_values_on_host_, attr));
     values_ = reinterpret_cast<ValueType*>(
         out_of_line_values_on_host_.flat<int8>().data());
-    std::cout << "  cuda_device_array.h CudaDeviceArrayOnHost::Init(). done init" << std::endl;
+    // std::cout << "  cuda_device_array.h CudaDeviceArrayOnHost::Init(). done init" << std::endl;
     return Status::OK();
   }
 
@@ -81,7 +81,7 @@ class CudaDeviceArrayOnHost {
   }
 
   Status Finalize() {
-    std::cout << "cuda_device_array.h CudaDeviceArrayOnHost::Finalize()" << std::endl;
+    // std::cout << "cuda_device_array.h CudaDeviceArrayOnHost::Finalize()" << std::endl;
     if (inlined()) {
       return Status::OK();
     }
@@ -105,7 +105,7 @@ class CudaDeviceArrayOnHost {
   }
 
   const CudaDeviceArrayStruct<ValueType, MaxInlineValues>& data() const {
-    std::cout << "cuda_device_array.h CudaDeviceArrayOnHost::data()" << std::endl;
+    // std::cout << "cuda_device_array.h CudaDeviceArrayOnHost::data()" << std::endl;
     // Ensure Finalize is called.
     DCHECK(inlined() || out_of_line_values_on_gpu_.IsInitialized());
     return data_;
@@ -113,7 +113,7 @@ class CudaDeviceArrayOnHost {
 
  private:
   bool inlined() const {
-    std::cout << "cuda_device_array.h CudaDeviceArrayOnHost::inlined() returning " << (data_.size <= MaxInlineValues) << std::endl;
+    // std::cout << "cuda_device_array.h CudaDeviceArrayOnHost::inlined() returning " << (data_.size <= MaxInlineValues) << std::endl;
      return data_.size <= MaxInlineValues;
    }
 

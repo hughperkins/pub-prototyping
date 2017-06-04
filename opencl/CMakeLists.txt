@@ -13,3 +13,7 @@ set_target_properties(testmapbuffer PROPERTIES
 add_executable(test_buffers test_buffers.cpp)
 target_link_libraries(test_buffers easycl dl)
 target_link_libraries(test_buffers ${OPENCL_LIBRARIES})
+
+add_executable(test_globalpointerstability test_globalpointerstability.cpp)
+target_link_libraries(test_globalpointerstability easycl dl)
+target_link_libraries(test_globalpointerstability ${OPENCL_LIBRARIES})

@@ -188,7 +188,7 @@ void Stream::ThenMemcpy(perftools::gputools::DeviceMemoryBase *, float *, uint32
 }
 
 float *Tensor::data() {
-    std::cout << "Tensor::data()" << std::endl;
+    std::cout << "Tensor::data() returning (float *)0" << std::endl;
     return 0;
 }
 
