@@ -36,6 +36,7 @@ include(/usr/local/share/cocl/cocl.cmake)
 foreach(TEST ${TESTS})
     cocl_add_executable(${TEST} ${TEST}.cu)
     target_link_libraries(${TEST} ${Coriander_LIBRARIES})
+    target_include_directories(${TEST} PRIVATE ${EIGEN_HOME}/test)
     add_custom_target(run-${TEST}
         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TEST}
         DEPENDS ${TEST} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST}.cu

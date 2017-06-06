@@ -47,9 +47,9 @@ void test_cuda_elementwise()
     for (int j = 0; j < 53; ++j) {
       for (int k = 0; k < 97; ++k) {
         float actual = out(Eigen::array<Eigen::DenseIndex, 3>(i,j,k));
-        float expected = abs(in1(Eigen::array<Eigen::DenseIndex, 3>(i,j,k))- 0.5f);
+        float expected = std::abs(in1(Eigen::array<Eigen::DenseIndex, 3>(i,j,k))- 0.5f);
         float diff = actual - expected;
-        if(abs(diff) >= 0.00001f) {
+        if(std::abs(diff) >= 0.00001f) {
           std::cout << "i=" << i << " j=" << j << " k=" << k << " diff=" << diff << std::endl;
         }
         VERIFY_IS_APPROX(actual, expected);
