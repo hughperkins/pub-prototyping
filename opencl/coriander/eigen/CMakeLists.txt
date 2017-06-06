@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.0)
 
 set(CLANG_HOME "/usr/local/opt/llvm-4.0" CACHE STRING "the clang-4.0.0 folder, containing lib, bin etc")
+set(EIGEN_HOME "UNKNOWN" CACHE STRING "eigen folder")
 
 set(TESTS test_cuda_elementwise_small test_cuda_elementwise test_cuda_nullary reduction_tiny reduction_sum reduction reduction_prod reduction_mean
   argmax test_cuda_elementwise_equal test_equal_int32 test_equal_int64 test_cuda_elementwise_abs
 )
 
-set(EIGEN_HOME ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
+# set(EIGEN_HOME ${CMAKE_CURRENT_SOURCE_DIR}/../../..)
 
 if(NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/split_test_helper.h)  
   file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/split_test_helper.h "")
@@ -33,7 +34,8 @@ endif()
 include(/usr/local/share/cocl/cocl.cmake)
 
 foreach(TEST ${TESTS})
-    add_cocl_executable(${TEST} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST}.cu)
+    cocl_add_executable(${TEST} ${TEST}.cu)
+    target_link_libraries(${TEST} ${Coriander_LIBRARIES})
     add_custom_target(run-${TEST}
         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TEST}
         DEPENDS ${TEST} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST}.cu
