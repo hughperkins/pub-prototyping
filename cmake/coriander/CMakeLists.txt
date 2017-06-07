@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.0.0 FATAL_ERROR)
 
-set(COCL_PATH /usr/local/bin/cocl)
-include(cmake/cocl.cmake)
+# set(COCL_PATH /usr/local/bin/cocl)
+# include(cmake/cocl.cmake)
+
+include(/usr/local/share/cocl/cocl.cmake)
 
 cocl_add_executable(cuda_sample cuda_sample.cu)
 target_link_libraries(cuda_sample cocl clblast clew)
