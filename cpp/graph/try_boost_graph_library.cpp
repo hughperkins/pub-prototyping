@@ -125,15 +125,18 @@ void test2() {
         std::cout << "child: " << *neighborIt << std::endl;
     }
 
-    typedef boost::graph_traits<Graph>::vertex_iterator vertex_iter;
-    std::pair<vertex_iter, vertex_iter> vp;
-    std::cout << "vertices(g) = ";
-    for(vp = boost::vertices(g); vp.first != vp.second; vp.first++) {
-        std::cout << name[*vp.first] << " ";
-    }
-    std::cout << std::endl;
+    typedef boost::property_map<Graph, boost::vertex_index_t>::type IndexMap;
+    IndexMap index = get(boost::vertex_index, g);
 
-    // std::cout << name[v] << " " << depth[v] << std::endl;
+    std::cout << "index[boost::vertex(2, g)] = " << index[boost::vertex(2, g)] << std::endl;
+    std::cout << "name[boost::vertex(2, g)] = " << name[boost::vertex(2, g)] << std::endl;
+
+    boost::graph_traits<Graph>::vertex_iterator vi, vi_end;
+    for(std::tie(vi, vi_end)=boost::vertices(g); vi != vi_end; vi++) {
+        boost::vertex_index_t i = vi;
+        std::cout << "    vertex index[*vi]" << index[*vi] << std::endl;
+        std::cout << "i " << i << std::endl;
+    }
 
     // label_writer<boost::vertex_name_t> mylabelwriter(name);
     auto mylabelwriter = make_my_label_writer(name, depth);
