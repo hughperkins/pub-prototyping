@@ -1,0 +1,15 @@
+#!/bin/bash
+
+set -e
+set -x
+
+CXX=g++
+if [[ $(uname) == Darwin ]]; then {
+    CXX=clang++
+} fi
+
+basename=$(basename $1)
+echo basename $basename
+
+${CXX} -std=c++11 -o $basename $1
+./$basename
