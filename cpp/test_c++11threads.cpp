@@ -2,6 +2,7 @@
 #include <thread>
 #include <vector>
 #include <mutex>
+#include <stdexcept>
 
 
 void run_from_thread(int tid) {
@@ -51,7 +52,7 @@ static MyVars *getMyVars() {
     return myVars;
 }
 
-int main(int argc, char *argv[]) {
+void test1() {
     // based on https://baptiste-wicht.com/posts/2012/03/cp11-concurrency-tutorial-part-2-protect-shared-data.html
     std::thread t1(run_from_thread, 0);
     t1.join();
@@ -83,6 +84,39 @@ int main(int argc, char *argv[]) {
     }
 
     std::cout << "counter at end: " << getMyVars()->counter() << std::endl;
+}
+
+thread_local MyVars *threadVars = nullptr;
+std::mutex print_mutex;
+
+void test_threadlocal() {
+    std::vector< std::thread > threads;
+    const int numThreads = 50;
+    for(int i = 0; i < numThreads; i++) {
+        threads.push_back(std::thread([i]() {
+            threadVars = new MyVars();
+            MyVars *thisVars = threadVars;
+            for(int i = 0; i < 10000; i++) {
+                threadVars->counter.increment();
+                if(thisVars != threadVars) {
+                    std::cout << "ERROR: mismatch of var" << std::endl;
+                    throw std::runtime_error("error: mismatch");
+                }
+            }
+            std::lock_guard< std::mutex > guard(print_mutex);
+            std::cout << "thread " << i << " counter " << threadVars->counter() << " vars " << (long)threadVars << std::endl;
+        }));
+    }
+    for(int i = 0; i < numThreads; i++) {
+        threads[i].join();
+    }
+    std::cout << "end of test_threadlocal()" << std::endl;
+}
+
+int main(int argc, char *argv[]) {
+    // test1();
+    test_threadlocal();
+
     std::cout << "finished main" << std::endl;
     return 0;
 }
