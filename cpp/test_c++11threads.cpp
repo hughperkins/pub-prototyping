@@ -94,17 +94,17 @@ void test_threadlocal() {
     const int numThreads = 50;
     for(int i = 0; i < numThreads; i++) {
         threads.push_back(std::thread([i]() {
-            threadVars = new MyVars();
-            MyVars *thisVars = threadVars;
+            int numCreations = 0;
             for(int i = 0; i < 10000; i++) {
-                threadVars->counter.increment();
-                if(thisVars != threadVars) {
-                    std::cout << "ERROR: mismatch of var" << std::endl;
-                    throw std::runtime_error("error: mismatch");
+                if(threadVars == 0) {
+                    threadVars = new MyVars();
+                    numCreations++;
                 }
+                threadVars->counter.increment();
             }
             std::lock_guard< std::mutex > guard(print_mutex);
-            std::cout << "thread " << i << " counter " << threadVars->counter() << " vars " << (long)threadVars << std::endl;
+            std::cout << "thread " << i << " counter " << threadVars->counter() << " vars " << (long)threadVars
+                << " numCreations=" << numCreations << std::endl;
         }));
     }
     for(int i = 0; i < numThreads; i++) {
