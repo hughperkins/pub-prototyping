@@ -131,12 +131,19 @@ void test2() {
     std::cout << "index[boost::vertex(2, g)] = " << index[boost::vertex(2, g)] << std::endl;
     std::cout << "name[boost::vertex(2, g)] = " << name[boost::vertex(2, g)] << std::endl;
 
+    std::cout << "vertices: ";
     boost::graph_traits<Graph>::vertex_iterator vi, vi_end;
     for(std::tie(vi, vi_end)=boost::vertices(g); vi != vi_end; vi++) {
-        boost::vertex_index_t i = vi;
-        std::cout << "    vertex index[*vi]" << index[*vi] << std::endl;
-        std::cout << "i " << i << std::endl;
+        std::cout << name[*vi] << " ";
     }
+    std::cout << std::endl;
+
+    std::cout << "edges: ";
+    boost::graph_traits<Graph>::edge_iterator ei, ei_end;
+    for(std::tie(ei, ei_end)=boost::edges(g); ei != ei_end; ei++) {
+        std::cout << source(*ei, g) << "->" << target(*ei, g) << " ";
+    }
+    std::cout << std::endl;
 
     // label_writer<boost::vertex_name_t> mylabelwriter(name);
     auto mylabelwriter = make_my_label_writer(name, depth);
