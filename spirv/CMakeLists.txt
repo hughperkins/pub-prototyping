@@ -17,6 +17,7 @@ else()
 endif()
 
 set(SPIRV_HOME "/usr/local/opt/spirv" CACHE PATH "directory containing the llvm/clang/llvm installed files")
+set(SPIRVTOOLS_HOME "/usr/local/opt/spirv-tools" CACHE PATH "directory containing the sirv-tools installed files")
 
 execute_process(
     COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/cmake/get-llvm-cxxflags.sh ${SPIRV_HOME}
@@ -72,6 +73,9 @@ endforeach()
 separate_arguments(PLATFORM_OPTIONS)
 
 add_executable(test_spir_cpp test_spir_cpp.cpp)
-target_include_directories(test_spir_cpp PRIVATE "${SPIRV_HOME}/include")
-target_compile_options(test_spir_cpp PRIVATE ${LLVM_CXXFLAGS} ${LLVM_DEFINES} ${PLATFORM_OPTIONS})
-target_link_libraries(test_spir_cpp ${LLVM_LIBPATHS} ${LLVM_SYSLIBS})
+# target_include_directories(test_spir_cpp PRIVATE "${SPIRV_HOME}/include")
+target_include_directories(test_spir_cpp PRIVATE ${SPIRVTOOLS_HOME}/include)
+# target_compile_options(test_spir_cpp PRIVATE ${LLVM_CXXFLAGS} ${LLVM_DEFINES} ${PLATFORM_OPTIONS})
+# target_compile_options(test_spir_cpp PRIVATE ${PLATFORM_OPTIONS})
+# target_link_libraries(test_spir_cpp ${LLVM_LIBPATHS} ${LLVM_SYSLIBS} ${SPIRVTOOLS_HOME}/lib/libSPIRV-Tools.a)
+target_link_libraries(test_spir_cpp ${SPIRVTOOLS_HOME}/lib/libSPIRV-Tools.a)
