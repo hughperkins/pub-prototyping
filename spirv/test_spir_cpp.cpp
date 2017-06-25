@@ -54,9 +54,10 @@
 //     void* user_data, const spv_parsed_instruction_t* parsed_instruction);
 
 spv_result_t on_instruction(
-    void* user_data, const spv_parsed_instruction_t* parsed_instruction) {
+    void* user_data, const spv_parsed_instruction_t* inst) {
     std::cout << "on_instruction()" << std::endl;
     // return 0;
+    std::cout << "  opcode=" << inst->opcode << " numwords=" << inst->num_words << " numoperands=" << inst->num_operands << std::endl;
     return SPV_SUCCESS;
 }
 
