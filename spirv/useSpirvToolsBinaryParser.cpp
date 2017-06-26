@@ -18,13 +18,6 @@
 
 #include "spirv-tools/libspirv.h"
 
-// #include "llvm/IR/LLVMContext.h"
-// // #include "llvm/IR/DebugInfoMetadata.h"
-// #include "llvm/Support/raw_ostream.h"
-// #include "llvm/Support/SourceMgr.h"
-// #include "llvm/IRReader/IRReader.h"
-// #include "llvm/IR/Module.h"
-
 // // An instruction parsed from a binary SPIR-V module.
 // typedef struct spv_parsed_instruction_t {
 //   // An array of words for this instruction, in native endianness.
@@ -61,18 +54,7 @@ spv_result_t on_instruction(
     return SPV_SUCCESS;
 }
 
-int main(int argc, char *argv[]) {
-    // llvm::LLVMContext context;
-    // llvm::SMDiagnostic smDiagnostic;
-    // // std::string llFilename = "cl_kernel1.ll";
-    // // std::unique_ptr<llvm::Module> M = parseIRFile(llFilename, smDiagnostic, context);
-    // std::string llFilename = "cl_kernel1.spv";
-    // std::unique_ptr<llvm::Module> M = parseIRFile(llFilename, smDiagnostic, context);
-    // if(!M) {
-    //     smDiagnostic.print("irtoopencl", llvm::errs());
-    //     throw std::runtime_error("failed to parse IR");
-    // }
-
+void useSpirvToolsParser() {
     std::string llFilename = "cl_kernel1.spv";
 
     int pos = 0;
@@ -115,6 +97,9 @@ int main(int argc, char *argv[]) {
                             &on_instruction,
                             &diag);
     spvContextDestroy(context);
+}
 
+int main(int argc, char *argv[]) {
+    useSpirvToolsParser();
     return 0;
 }
