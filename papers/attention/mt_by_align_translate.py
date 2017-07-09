@@ -19,9 +19,10 @@ training = []
 num_available_words = len(words)
 N = 100
 # N = 16
+N = 8
 hidden_size = 16
 # hidden_size = 1024
-hidden_size = 128
+hidden_size = 512
 num_epochs = 16
 # N = 10
 
@@ -44,9 +45,11 @@ for n in range(N):
     target_sentence = ' '.join(target_words)
     training.append({'input': sentence, 'target': target_sentence})
 
-print(training[0])
-if N > 1:
-    print(training[1])
+for n in range(min(N, 16)):
+    print(n, training[n])
+# print(training[0])
+# if N > 1:
+#     print(training[1])
 
 char_by_idx = {}
 idx_by_char = {}
@@ -159,6 +162,7 @@ while True:
 
         def predict_on(input_encoded):
             state = encode(input_encoded=input_encoded)
+
             prev_c_encoded = autograd.Variable(
                 torch.from_numpy(np.array([start_code], np.int32)).long().view(1, 1)
             )
@@ -183,6 +187,7 @@ while True:
         if n == 0:
             print(output_sentence)
             print(predict_on(input_encoded=training_encoded[0]['input_encoded']))
+            print(predict_on(input_encoded=training_encoded[1]['input_encoded']))
 
         embedding.zero_grad()
         rnn_enc.zero_grad()
