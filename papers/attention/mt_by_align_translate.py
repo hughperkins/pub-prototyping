@@ -1,5 +1,5 @@
 import torch
-from torch import nn, autograd
+from torch import nn, autograd, optim
 import numpy as np
 import math
 import sys
@@ -18,7 +18,10 @@ words = 'this is a test of some foo bar paris london whatever near far'.split(' 
 training = []
 num_available_words = len(words)
 N = 100
+# N = 16
 hidden_size = 16
+# hidden_size = 1024
+hidden_size = 128
 num_epochs = 16
 # N = 10
 
@@ -50,6 +53,9 @@ for n in range(N):
     target_sentence = ' '.join(target_words)
     # print('target [%s]' % target_sentence)
     training.append({'input': sentence, 'target': target_sentence})
+print(training[0])
+if N > 1:
+    print(training[1])
 
 char_by_idx = {}
 idx_by_char = {}
@@ -64,17 +70,30 @@ def add_char(c):
     return idx
 
 
-def encode(sentence):
-    encoded = np.zeros((len(sentence),), dtype=np.int32)
+def encode_char(c):
+    return idx_by_char.get(c, unk_code)
+
+
+def encode_passage(sentence):
+    encoded = np.zeros((len(sentence) + 2,), dtype=np.int32)
+    encoded[0] = start_code
     for i, c in enumerate(sentence):
-        encoded[i] = add_char(c)
+        encoded[i + 1] = add_char(c)
+    encoded[len(sentence) + 1] = end_code
     return encoded
 
 
 training_encoded = []
+add_char('<start>')
+add_char('<end>')
+add_char('<unk>')
+unk_code = idx_by_char['<unk>']
+start_code = encode_char('<start>')
+end_code = encode_char('<end>')
 for i, example in enumerate(training):
     training_encoded.append({
-        'input': encode(example['input']), 'target': encode(example['target'])})
+        'input_encoded': encode_passage(example['input']),
+        'target_encoded': encode_passage(example['target'])})
 
 # print(training_encoded[0])
 # print(training_encoded[1])
@@ -111,30 +130,39 @@ rnn_dec = nn.RNN(
     nonlinearity='tanh',
     bias=True,
 )
+# enc_opt = optim.Adam([embedding.parameters()] + [, lr=0.001)
+# dec_opt = optim.Adam(, lr=0.001)
+opt = optim.Adam(
+    [p for p in embedding.parameters()] +
+    [p for p in rnn_enc.parameters()] +
+    [p for p in rnn_dec.parameters()], lr=0.001)
 
-for epoch in range(num_epochs):
+# for epoch in range(num_epochs):
+epoch = 0
+while True:
+    print('epoch', epoch)
     for n, ex in enumerate(training_encoded):
-        input = ex['input']
-        target = ex['target']
-        input_len = len(input)
-        target_len = len(target)
-        print('input_len', input_len)
+        input_encoded = ex['input_encoded']
+        target_encoded = ex['target_encoded']
+        input_len = len(input_encoded)
+        target_len = len(target_encoded)
+        # print('input_len', input_len)
         # encode first
         initial_state = autograd.Variable(torch.zeros(1, 1, hidden_size))
         # input_tensor = autograd.Variable(torch.zeros(input_len, 1))
-        input_tensor = autograd.Variable(torch.from_numpy(input).long().view(-1, 1))
-        print('input_tensor.size()', input_tensor.size())
+        input_tensor = autograd.Variable(torch.from_numpy(input_encoded).long().view(-1, 1))
+        # print('input_tensor.size()', input_tensor.size())
         # input_tensor[:, 0, :] = input
         # input_tensor = autograd.Variable(torch.Tensor(
         #     input.reshape(input_len, 1, V)
         # ))
         input_embedded = embedding(input_tensor)
-        print('input_embedded.size()', input_embedded.size())
+        # print('input_embedded.size()', input_embedded.size())
         # print('input_tensor.size()', input_tensor.size())
-        print('initial_state.size()', initial_state.size())
-        out, hn = rnn_enc.forward(input_embedded, initial_state)
-        print('out.size()', out.size())
-        print('hn.size()', hn.size())
+        # print('initial_state.size()', initial_state.size())
+        out, hn = rnn_enc(input_embedded, initial_state)
+        # print('out.size()', out.size())
+        # print('hn.size()', hn.size())
         # for i, v in enumerate(input):
         # state = autograd.Variable(torch.zeros(num_hidden))
         # for t, c in enumerate(input):
@@ -146,14 +174,57 @@ for epoch in range(num_epochs):
         #     sys.exit(0)
 
         # now decode
-        # for t, target_c in enumerate(target):
+        prev_c_encoded = autograd.Variable(
+            torch.from_numpy(np.array([start_code], np.int32)).long().view(1, 1)
+        )
+        # print('prev_c_encoded.size()', prev_c_encoded.size())
+        loss = 0
+        criterion = torch.nn.NLLLoss()
+
+        output_sentence = ''
+        for t, target_c_encoded in enumerate(target_encoded):
+            # print('target_c', target_c)
+            # this is going to correspond approximately to
+            # 'teacher forcing' in the seq2seq example
+            # on the pytorch website
+            prev_c_embedded = embedding(prev_c_encoded)
+            # print('prev_c_embedded.size()', prev_c_embedded.size())
+            pred_c_embedded, hn = rnn_dec(prev_c_embedded, hn)
+            # print('pred_c_embedded.size()', pred_c_embedded.size())
+            # print('embedding.weight.size()', embedding.weight.size())
+            pred_c = pred_c_embedded.view(-1, hidden_size) @ embedding.weight.transpose(0, 1)
+            # print('pred_c.size()', pred_c.size())
+            _, v = pred_c.max(-1)
+            # print('v', v.data[0][0])
+            # print(char_by_idx[v.data[0][0]])
+            output_sentence += char_by_idx[v.data[0][0]]
+            loss += criterion(pred_c, autograd.Variable(torch.LongTensor([target_c_encoded.item()])))
+
+            prev_c_encoded = autograd.Variable(
+                torch.from_numpy(np.array([target_c_encoded], np.int32)).long().view(1, 1)
+            )
+            # print('loss', loss)
+            # pred_c_embedded = rnn_dec()
+        # print('loss', loss)
+        if n == 0:
+            print(output_sentence)
+
+        embedding.zero_grad()
+        rnn_enc.zero_grad()
+        rnn_dec.zero_grad()
+        loss.backward()
+        opt.step()
+        # print(dir(rnn_enc))
+        # print('rnn_enc.weight.grad', rnn_enc.weight_hh_l0.grad)
+        # sys.exit(0)
+
         #     target_c_embedded = embedding[target_c]
         #     state = c_embedded @ W_dec + b_dec
         #     state = nn.functional.tanh(state)
         # out = state @ embedding.transpose(0, 1)
         # print('out.shape', out.shape)
-        sys.exit(0)
-
+        # sys.exit(0)
+    epoch += 1
 
 # if __name__ == '__main__':
 #     run()
