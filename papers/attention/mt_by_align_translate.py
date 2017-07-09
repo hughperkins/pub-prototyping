@@ -19,10 +19,10 @@ training = []
 num_available_words = len(words)
 N = 100
 # N = 16
-N = 8
+N = 4
 hidden_size = 16
 # hidden_size = 1024
-hidden_size = 512
+hidden_size = 64
 num_epochs = 16
 # N = 10
 
@@ -120,7 +120,7 @@ opt = optim.Adam(
 # for epoch in range(num_epochs):
 epoch = 0
 while True:
-    print('epoch', epoch)
+    # print('epoch', epoch)
     for n, ex in enumerate(training_encoded):
         input_encoded = ex['input_encoded']
         target_encoded = ex['target_encoded']
@@ -184,7 +184,8 @@ while True:
                 )
             return output_sentence
 
-        if n == 0:
+        if n == 0 and epoch % 50 == 0:
+            print('epoch', epoch)
             print(output_sentence)
             print(predict_on(input_encoded=training_encoded[0]['input_encoded']))
             print(predict_on(input_encoded=training_encoded[1]['input_encoded']))

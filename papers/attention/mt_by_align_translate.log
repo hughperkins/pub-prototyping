@@ -1,0 +1,14 @@
+simple rnn seq-to-seq, no attention at all. using rnn
+N = 4
+hidden_size = 64
+
+<start>this<end>this<end>this<end>this
+epoch 1800
+<start>far foo thst<end>
+<start>far foo this<end>this<end>t
+<start>this<end>this<end>this<end>this
+epoch 1850
+<start>far foo thst<end>
+<start>far foo this<end>this<end>t
+<start>this<end>this<end>this<end>this
+^CTraceback (most recent call last):
