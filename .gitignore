@@ -40,3 +40,4 @@ CMakeFiles/
 opencl/mac/
 
 bazel-*
+*.pyc
