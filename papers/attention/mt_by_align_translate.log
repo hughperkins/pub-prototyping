@@ -1,4 +1,4 @@
-simple rnn seq-to-seq, no attention at all. using rnn
+simple rnn seq-to-seq, no attention at all. using rnn; seq2seq_noattention.py
 N = 4
 hidden_size = 64
 
