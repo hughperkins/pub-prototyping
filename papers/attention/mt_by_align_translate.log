@@ -35,3 +35,148 @@ epoch 95 encoder:
     [He was lea<end>] => [He was lea<end>]
     [She always<end>] => [Hhe always<end>]
 ```
+
+add back in decoder, fairly junky:
+```
+epoch 730 encoder:
+    [I'm glad w<end>] => [H'm wlad w<end>]
+    [When did y<end>] => [Hhe  w d w<end>]
+    [Somebody a<end>] => [Hhme ody w<end>]
+    [He was lea<end>] => [He wa<end> wea<end>]
+    [She always<end>] => [Hhe w<end>way<end><end>]
+
+epoch 730 decoder:
+    [I'm glad w] => [Je suis ra] [Qe s<end><end><end><end><end><end><end>]
+    [When did y] => [Quand êtes] [Qe s s s s ]
+
+epoch 735 encoder:
+    [I'm glad w<end>] => [H'm wlad w<end>]
+    [When did y<end>] => [Hhe  w d w<end>]
+    [Somebody a<end>] => [Hhme ody w<end>]
+    [He was lea<end>] => [He wa<end> wea<end>]
+    [She always<end>] => [Hhe w<end>way<end><end>]
+
+epoch 735 decoder:
+    [I'm glad w] => [Je suis ra] [Qe s<end>e<end> se ]
+    [When did y] => [Quand êtes] [Qe s<end><end><end><end><end><end><end>]
+    ```
+
+Since this has caused encoder things to get owrse, lets bump up hidden size to 512
+
+
+after fixing some bugs, like remembering to train the decoder ;-). still junky
+```
+
+epoch 756 encoder:
+    [I'm glad w] => [S'm alad a]
+    [When did y] => [She  a d w]
+    [Somebody a] => [Shm  od  a]
+    [He was lea] => [Se aa<end> ae ]
+    [She always] => [She alwa<end> ]
+
+epoch 756 decoder:
+    [I'm glad w] => [Je suis ra] [Qu <end><end><end><end><end><end><end><end>]
+    [When did y] => [Quand êtes] [Qu <end><end><end><end><end><end><end><end>]
+```
+
+try hidden size 1024...
+```
+epoch 158 encoder:
+    [I'm glad w] => [S'm glad w]
+    [When did y] => [Shen did y]
+    [Somebody a] => [Shmebody a]
+    [He was lea] => [Se was lea]
+    [She always] => [She always]
+
+epoch 158 decoder:
+    [I'm glad w] => [Je suis ra] [Je <end><end><end><end><end><end><end><end>]
+    [When did y] => [Quand êtes] [Qu <end><end><end><end><end><end><end><end>]
+```
+
+after a while, encoder becomes pretty junky:
+```
+epoch 228 encoder:
+    [I'm glad w] => [S'm alad a]
+    [When did y] => [She  aid a]
+    [Somebody a] => [Shme od  a]
+    [He was lea] => [Se aas aea]
+    [She always] => [She always]
+
+epoch 228 decoder:
+    [I'm glad w] => [Je suis ra] [Qu <end><end><end><end><end><end><end><end>]
+    [When did y] => [Quand êtes] [Qu <end><end><end><end><end><end><end><end>]
+```
+Of course, decoder cant do much with sentences that all end in space-a...
+
+Need gradient clipping?
+
+
+with gradient clipping to 4.0, and dropping hidden down to 128:
+```
+epoch 1186 encoder:
+    [I'm glad w] => [H'm glad w]
+    [When did y] => [Hhen d d <end>]
+    [Somebody a] => [Homewod  a]
+    [He was lea] => [He was lea]
+    [She always] => [Hoe always]
+
+epoch 1186 decoder:
+    [I'm glad w] => [Je suis ra] [Qe sui<end> <end><end><end>]
+    [When did y] => [Quand êtes] [Qu <end><end><end><end><end><end><end><end>]
+
+epoch 1188 encoder:
+    [I'm glad w] => [H'm glad w]
+    [When did y] => [Hhen d d y]
+    [Somebody a] => [Homewod  a]
+    [He was lea] => [He was lea]
+    [She always] => [Hoe always]
+
+epoch 1188 decoder:
+    [I'm glad w] => [Je suis ra] [Qe sui<end> <end><end><end>]
+    [When did y] => [Quand êtes] [Qu <end><end><end><end><end><end><end><end>]
+```
+
+put back the '<end>' token in encoder:
+```
+epoch 634 encoder:
+    [I'm glad w<end>] => [H'm glad w<end>]
+    [When did y<end>] => [Hhe  did <end><end>]
+    [Somebody a<end>] => [Home ody a<end>]
+    [He was lea<end>] => [He was lea<end>]
+    [She always<end>] => [Hoe always<end>]
+
+epoch 634 decoder:
+    [I'm glad w] => [Je suis ra] [Je su <end> <end><end><end>]
+    [When did y] => [Quand êtes] [Quel<end><end><end><end><end><end><end>]
+```
+working more or less ok :-)
+
+
+with N = 16, kind of similar:
+```
+epoch 340 encoder:
+    [I'm glad w<end>] => [I m <end>la<end> <end><end>]
+    [When did y<end>] => [Iha  <end><end><end> <end><end>]
+    [Somebody a<end>] => [Iome o<end><end> a<end>]
+    [He was lea<end>] => [Ie wa<end> <end>ea<end>]
+    [She always<end>] => [Ioe a<end>aa<end><end><end>]
+
+epoch 340 decoder:
+    [I'm glad w] => [Je suis ra] [Je <end><end><end><end><end><end><end><end>]
+    [When did y] => [Quand êtes] [Que<end> <end><end><end><end><end><end>]
+```
+
+abandon on first error:
+```
+epoch 92 encoder:
+    [I'm glad w<end>] => [I m glad <end><end>]
+    [When did y<end>] => [Ihe  did y<end>]
+    [Somebody a<end>] => [Iome od  a<end>]
+    [He was lea<end>] => [Ie was lea<end>]
+    [She always<end>] => [Ioe alaa<end>s<end>]
+
+epoch 92 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis <end>]
+    [When did y] => [Quand êtes] [Que]
+```
+kind of ok
