@@ -1,3 +1,10 @@
+"""
+In this version, we'll train each language model separately,
+or at least teacher-force-train the encoder, not just the decoder
+
+The link between encoder and decoder does seem pretty brittle though...
+"""
+
 import torch
 from torch import nn, autograd, optim
 import numpy as np
@@ -13,18 +20,22 @@ import data_anki as data
 # (basically, we want any word that was prefixed by '*')
 
 N = 100
-# N = 16
+N = 8
+max_sentence_len = 10
 # N = 4
 print_every = 5
 hidden_size = 16
 # hidden_size = 1024
-hidden_size = 16
+hidden_size = 256
 # num_epochs = 16
 # N = 10
 
 
 training = data.Data().get_training(N=N)
-training = [{'input': ex['first'], 'target': ex['second']} for ex in training]
+training = [
+    {'input': ex['first'][:max_sentence_len], 'target': ex['second'][:max_sentence_len]}
+    for ex in training
+]
 for n in range(min(N, 16)):
     print(n, training[n])
 # print(training[0])
@@ -94,7 +105,9 @@ rnn_dec = nn.RNN(
 )
 # rnn_dec = rnn_enc
 
-opt = optim.Adam(
+optimizer_fn = optim.Adam
+# optimizer_fn = optim.SGD
+opt = optimizer_fn(
     [p for p in embedding.parameters()] +
     [p for p in rnn_enc.parameters()]
     # + [p for p in rnn_dec.parameters()]
@@ -110,54 +123,81 @@ while True:
         input_len = len(input_encoded)
         target_len = len(target_encoded)
 
-        # encode first
-        def encode(input_encoded):
-            initial_state = autograd.Variable(torch.zeros(1, 1, hidden_size))
-            input_tensor = autograd.Variable(torch.from_numpy(input_encoded).long().view(-1, 1))
-            input_embedded = embedding(input_tensor)
-            out, hn = rnn_enc(input_embedded, initial_state)
-            return hn
+        teacher_forcing = np.random.random() < 0.5
 
-        state = encode(input_encoded)
-
-        # now decode
-        prev_c_encoded = autograd.Variable(
-            torch.from_numpy(np.array([start_code], np.int32)).long().view(1, 1)
-        )
         loss = 0
         criterion = torch.nn.NLLLoss()
 
-        output_sentence = ''
-        teacher_forcing = False
-        for t, target_c_encoded in enumerate(target_encoded[:5]):
-            # this is going to correspond approximately to
-            # 'teacher forcing' in the seq2seq example
-            # on the pytorch website
-            prev_c_embedded = embedding(prev_c_encoded)
-            pred_c_embedded, state = rnn_dec(prev_c_embedded, state)
-            pred_c = pred_c_embedded.view(-1, hidden_size) @ embedding.weight.transpose(0, 1)
-            _, v = pred_c.max(-1)
-            v = v.data[0][0]
-            output_sentence += char_by_idx[v]
-            loss += criterion(pred_c, autograd.Variable(torch.LongTensor([target_c_encoded.item()])))
+        # encode first
+        def encode(input_encoded):
+            enc_loss = 0
+            initial_state = autograd.Variable(torch.zeros(1, 1, hidden_size))
+            prev_c_encoded = autograd.Variable(
+                torch.from_numpy(np.array([start_code], np.int32)).long().view(1, 1)
+            )
+            state = initial_state
+            input_sentence_verify = ''
+            sentence = ''
+            # [1:] is to cut off the start token
+            for t, input_c_encoded in enumerate(input_encoded[1:]):
+                input_sentence_verify += char_by_idx[input_c_encoded]
+                prev_c_embedded = embedding(prev_c_encoded)
+                pred_c_embedded, state = rnn_enc(prev_c_embedded, state)
+                pred_c = pred_c_embedded.view(-1, hidden_size) @ embedding.weight.transpose(0, 1)
+                _, v = pred_c.max(-1)
+                v = v.data[0][0]
+                sentence += char_by_idx[v]
+                if teacher_forcing or True:
+                    enc_loss += criterion(pred_c, autograd.Variable(torch.LongTensor([input_c_encoded.item()])))
+                prev_c_encoded = autograd.Variable(
+                    torch.from_numpy(np.array([input_c_encoded], np.int32)).long().view(1, 1)
+                )
+            if n <= 4 and epoch % print_every == 0:
+                if n == 0:
+                    print('epoch', epoch, 'encoder:')
+                print('    [%s] => [%s]' % (input_sentence_verify, sentence))
+            return state, enc_loss
 
-            if teacher_forcing:
-                prev_c_encoded = autograd.Variable(
-                    torch.from_numpy(np.array([target_c_encoded], np.int32)).long().view(1, 1)
-                )
-            else:
-                prev_c_encoded = autograd.Variable(
-                    torch.from_numpy(np.array([v], np.int32)).long().view(1, 1)
-                )
+        state, enc_loss = encode(input_encoded)
+        loss += enc_loss
+
+        # now decode
+        if False:
+            prev_c_encoded = autograd.Variable(
+                torch.from_numpy(np.array([start_code], np.int32)).long().view(1, 1)
+            )
+
+            output_sentence = ''
+            # teacher_forcing = False
+            for t, target_c_encoded in enumerate(target_encoded[1:]):
+                # this is going to correspond approximately to
+                # 'teacher forcing' in the seq2seq example
+                # on the pytorch website
+                prev_c_embedded = embedding(prev_c_encoded)
+                pred_c_embedded, state = rnn_dec(prev_c_embedded, state)
+                pred_c = pred_c_embedded.view(-1, hidden_size) @ embedding.weight.transpose(0, 1)
+                _, v = pred_c.max(-1)
+                v = v.data[0][0]
+                output_sentence += char_by_idx[v]
+                loss += criterion(pred_c, autograd.Variable(torch.LongTensor([target_c_encoded.item()])))
+
+                if teacher_forcing:
+                    prev_c_encoded = autograd.Variable(
+                        torch.from_numpy(np.array([target_c_encoded], np.int32)).long().view(1, 1)
+                    )
+                else:
+                    prev_c_encoded = autograd.Variable(
+                        torch.from_numpy(np.array([v], np.int32)).long().view(1, 1)
+                    )
+            if n <= 1 and epoch % print_every == 0:
+                if n == 0:
+                    print('epoch', epoch)
+                print(output_sentence)
         embedding.zero_grad()
         rnn_enc.zero_grad()
         loss.backward()
         opt.step()
 
-        if n <= 1 and epoch % print_every == 0:
-            if n == 0:
-                print('epoch', epoch)
-            print(output_sentence)
 
         def predict_on(input_encoded):
             state = encode(input_encoded=input_encoded)

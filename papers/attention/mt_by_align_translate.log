@@ -12,3 +12,26 @@ epoch 1850
 <start>far foo this<end>this<end>t
 <start>this<end>this<end>this<end>this
 ^CTraceback (most recent call last):
+
+trying anki, with 4 pairs :-P
+even with 128 hidden neurons, it's kind of junky
+- looks like it doesnt really learn to pay attnetion to internal state,
+  just goes off last few letters
+- maybe turn off teacher forcing, even during training?
+  - or maybe attenuate the loss with distance from the enc-dec boundary?
+     - (or both?)
+
+
+junky seqt oseq iwthout attention
+- maybe because encoder doestn learn language model?
+- added teacher forcing to encoder
+- also dropped N down to 8, and increased hidden size to 256
+=> encoder on its own (no decoder) learned ok ish:
+```
+epoch 95 encoder:
+    [I'm glad w<end>] => [H'm glad w<end>]
+    [When did y<end>] => [Hhen did y<end>]
+    [Somebody a<end>] => [Hhmebody a<end>]
+    [He was lea<end>] => [He was lea<end>]
+    [She always<end>] => [Hhe always<end>]
+```
