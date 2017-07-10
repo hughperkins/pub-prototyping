@@ -3,6 +3,7 @@ from torch import nn, autograd, optim
 import numpy as np
 import math
 import sys
+import data_starredwords as data
 
 
 # try normal rnn first
@@ -10,13 +11,6 @@ import sys
 # target: "test some"
 # (basically, we want any word that was prefixed by '*')
 
-words = 'this is a test of some foo bar paris london whatever near far'.split(' ')
-
-# training_sources = [
-#     {'input': 'this is a test of some stuff']}
-# ]
-training = []
-num_available_words = len(words)
 N = 100
 # N = 16
 N = 4
@@ -26,25 +20,8 @@ hidden_size = 64
 num_epochs = 16
 # N = 10
 
-torch.manual_seed(123)
-np.random.seed(123)
-for n in range(N):
-    num_words = np.random.choice(range(3,8))
-    chosen_word_idxes = np.random.choice(num_available_words, num_words, replace=True)
-    chosen_words = []
-    for i in chosen_word_idxes:
-        chosen_words.append(words[i])
-    num_starred = np.random.choice(range(1, num_words + 1))
-    starred = set(np.random.choice(num_words, num_starred, replace=False))
-    for i in starred:
-        chosen_words[i] = '*' + chosen_words[i]
-    sentence = ' '.join(chosen_words)
-    target_words = []
-    for i in starred:
-        target_words.append(chosen_words[i][1:])
-    target_sentence = ' '.join(target_words)
-    training.append({'input': sentence, 'target': target_sentence})
 
+training = data.get_training(N=N)
 for n in range(min(N, 16)):
     print(n, training[n])
 # print(training[0])
