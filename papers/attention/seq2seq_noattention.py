@@ -54,7 +54,7 @@ def encode_passage(sentence):
     return encoded
 
 
-training_encoded = []
+# training_encoded = []
 add_char('<start>')
 add_char('<end>')
 add_char('<unk>')
@@ -62,9 +62,8 @@ unk_code = idx_by_char['<unk>']
 start_code = encode_char('<start>')
 end_code = encode_char('<end>')
 for i, example in enumerate(training):
-    training_encoded.append({
-        'input_encoded': encode_passage(example['input']),
-        'target_encoded': encode_passage(example['target'])})
+    example['input_encoded'] = encode_passage(example['input'])
+    example['target_encoded'] = encode_passage(example['target'])
 
 V = len(char_by_idx)
 print('vocab size %s' % V)
@@ -72,6 +71,8 @@ print('vocab size %s' % V)
 # based very loosely on
 # http://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html#the-encoder
 
+torch.manual_seed(123)
+np.random.seed(123)
 embedding = nn.Embedding(V, hidden_size)
 print('V', V, 'hidden_size', hidden_size)
 rnn_enc = nn.RNN(
@@ -98,7 +99,7 @@ opt = optim.Adam(
 epoch = 0
 while True:
     # print('epoch', epoch)
-    for n, ex in enumerate(training_encoded):
+    for n, ex in enumerate(training):
         input_encoded = ex['input_encoded']
         target_encoded = ex['target_encoded']
         input_len = len(input_encoded)
@@ -164,8 +165,8 @@ while True:
         if n == 0 and epoch % 50 == 0:
             print('epoch', epoch)
             print(output_sentence)
-            print(predict_on(input_encoded=training_encoded[0]['input_encoded']))
-            print(predict_on(input_encoded=training_encoded[1]['input_encoded']))
+            print(predict_on(input_encoded=training[0]['input_encoded']))
+            print(predict_on(input_encoded=training[1]['input_encoded']))
 
         embedding.zero_grad()
         rnn_enc.zero_grad()
