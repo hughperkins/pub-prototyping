@@ -45,3 +45,5 @@ bazel-*
 *.zip
 data
 *.ipynb
+play.py
+play.ipynb
