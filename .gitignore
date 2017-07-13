@@ -41,3 +41,6 @@ opencl/mac/
 
 bazel-*
 *.pyc
+
+*.zip
+data
