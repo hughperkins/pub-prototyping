@@ -44,3 +44,4 @@ bazel-*
 
 *.zip
 data
+*.ipynb
