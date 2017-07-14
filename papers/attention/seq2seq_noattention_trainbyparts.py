@@ -138,7 +138,7 @@ while True:
         loss += enc_loss
 
         # decode
-        if False:
+        if True:
             prev_c = encoding.start_code
 
             output_sentence = ''
