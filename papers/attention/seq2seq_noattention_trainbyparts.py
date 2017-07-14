@@ -106,8 +106,6 @@ while True:
     for n, ex in enumerate(training):
         input_encoded = ex['input_encoded']
         target_encoded = ex['target_encoded']
-        input_len = len(input_encoded)
-        target_len = len(target_encoded)
 
         teacher_forcing = (epoch % print_every) != 0
 
@@ -117,25 +115,18 @@ while True:
         # encode
         def encode(input_encoded, state):
             global encoder_debug
-            enc_loss = 0
-            prev_c = encoding.start_code
-            input_sentence_verify = ''
-            sentence = ''
-            # [1:] is to cut off the start token
-            # [:-1] is to cut off end token too :-)
-            for t, input_c in enumerate(input_encoded[1:]):
-                input_c = input_c.item()
-                input_sentence_verify += encoding.char_by_idx[input_c]
-                pred_c_embedded, state = encoder(autograd.Variable(torch.LongTensor([[prev_c]])), state)
-                pred_c = pred_c_embedded.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
-                _, v = pred_c.max(-1)
-                v = v.data[0][0]
-                sentence += encoding.char_by_idx[v]
-                # want to force encoder to build language model a bit faster than
-                # if it has to wait only for gradient from decoder:
-                enc_loss += criterion(pred_c, autograd.Variable(
-                    torch.LongTensor([input_c])))
-                prev_c = input_c
+
+            input_sentence_verify = encoding.decode_passage(input_encoded)
+
+            pred_embedded, state = encoder(autograd.Variable(torch.from_numpy(input_encoded).view(-1, 1)), state)
+            pred = pred_embedded.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
+            _, v = pred.max(-1)
+
+            sentence = encoding.decode_passage(v.data.cpu().numpy())
+
+            enc_loss = criterion(pred[:-1], autograd.Variable(
+                torch.from_numpy(input_encoded[1:]).view(-1)))
+
             if n <= 4 and epoch % print_every == 0:
                 if n == 0:
                     encoder_debug += 'epoch %s encoder:\n' % epoch
@@ -147,7 +138,7 @@ while True:
         loss += enc_loss
 
         # decode
-        if True:
+        if False:
             prev_c = encoding.start_code
 
             output_sentence = ''
