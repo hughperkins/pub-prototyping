@@ -111,19 +111,10 @@ class Decoder(nn.Module):
 
 
 class AlignmentModel(nn.Module):
-    """
-    this is not really the model in 'align and translate' paper
-    It's a single layer mlp, with tanh though
-    """
     def __init__(self, seq_len, hidden_size):
         super().__init__()
         self.seq_len = seq_len
         self.hidden_size = hidden_size
-        # from the paper, seems like this can be optimized a bit, relative
-        # to what I'm writing here
-        # self.h1 = nn.Linear(hidden_size * 3, seq_len)
-        # self.h2 = nn.Linear(hidden_size, seq_len)
-        # self.h2 = nn.Linear(seq_len, )
 
         self.W = nn.Parameter(  # autograd.Variable(
             torch.rand(hidden_size, hidden_size) * 0.1)  # , requires_grad=True)
@@ -238,49 +229,6 @@ class AlignmentModel(nn.Module):
         x = F.softmax(x)
         print('x.size()', x.size())
         return x
-        # x = x.view(seq_len, batch_size)
-
-        # print('encoder_out_batch.size()', encoder_out_batch.size())
-        # print('decoder_prev_state_batch.size()', decoder_prev_state_batch.size())
-        # x = torch.cat([encoder_out_batch, decoder_prev_state_batch])
-        # print('cat states .size()', x.size())
-
-        # # # just do stupidly for now, ie no batching...
-        # batch_size = encoder_out_batch.size()[1]
-        # print('batch_size', batch_size)
-        # # res = torch.zeros(batch_size, self.seq_len)
-        # # for n in range(batch_size):
-        # #     # res_n = autograd.Variable(torch.zeros(self.seq_len))
-        # #     for t in range(self.seq_len):
-
-        # return res
-
-        # x = self.h1(x)
-        # print('encoder_out_batch.size()', encoder_out_batch.size())
-        # print('decoder_prev_state_batch.size()', decoder_prev_state_batch.size())
-        # # x = torch.cat([encoder_out_batch, decoder_prev_state_batch])
-        # # print('cat states .size()', x.size())
-        # batch_size = encoder_out_batch.size()[1]
-        # alignment_model = torch.zeros(batch_size, seq_len)
-        # Uh = encoder_out_batch.view(
-        #     self.seq_len * batch_size, self.hidden_size * 2) @ self.U.transpose(0, 1)
-        # Uh = Uh.view(seq_len, batch_size, self.hidden_size)
-        # print('Uh.size()', Uh.size())
-        # for t in range(self.seq_len):
-        #     Ws = decoder_prev_state_batch.view(batch_size, self.hidden_size) @ self.W
-        #     print('Ws.size()', Ws.size())
-        #     # Ws_Uh_concat = torch.cat([Ws, Uh])
-        #     # x = self.h1(x)
-        #     # x = torch.cat([encoder_state, decoder_prev_state])
-        #     # x = self.W @ decoder_prev_state
-        #     # TODO: per 'align and translate' paper, following can be cached
-        #     # x += self.U @ encoder_state
-        #     x = torch.nn.functional.tanh(Ws + Uh)
-        #     # x = self.h2(x)
-        #     x = F.softmax(x)
-        #     print('softmax out.size()', x.size())
-        #     # x *= self.v
-        # return x
 
 
 optimizer_fn = optim.Adam
@@ -288,19 +236,9 @@ optimizer_fn = optim.Adam
 
 embedding = nn.Embedding(V, hidden_size)
 encoder = Encoder(embedding=embedding)
+alignment_model = AlignmentModel(seq_len=seq_len, hidden_size=hidden_size)
 decoder = Decoder(embedding=embedding)
 embedding_matrix = embedding.weight
-
-alignment_model = AlignmentModel(seq_len=seq_len, hidden_size=hidden_size)
-
-# annotations are concatenation of forward and backward state,
-# and each of forward and backward state aer hidden_size long
-# the model outputs seq_len outputs, for attention over the
-# seq_len encoder inputs
-# we are going to concatenate the annotation with the rnn_decoder
-# state, which is hidden_size long
-# so, total: hidden_size * 3
-
 
 parameters = (
     set(encoder.parameters()) |
@@ -324,17 +262,13 @@ while True:
     def encode(encoder_batch, state):
         global encoder_debug
 
-        # print('encoder_batch.size()', encoder_batch.size())
-        # print('state.size()', state.size())
         pred_embedded, state = encoder(autograd.Variable(encoder_batch), state)
-        # print('pred_embedded.size()', pred_embedded.size())
 
         enc_loss = 0
 
         # calc loss for forward direction:
         pred_flat = pred_embedded[:, :, :hidden_size].contiguous().view(
             -1, hidden_size) @ embedding_matrix.transpose(0, 1)
-        # print('pred_flat.size()', pred_flat.size())
         pred = pred_flat.view(seq_len, batch_size, V)
         _, v_flat = pred_flat.max(-1)
         v_forward = v_flat.view(seq_len, batch_size)
@@ -355,14 +289,12 @@ while True:
 
         # and backward...
         pred_flat = pred_embedded[:, :, hidden_size:].contiguous().view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
-        # print('pred_flat.size()', pred_flat.size())
         pred = pred_flat.view(seq_len, batch_size, V)
         _, v_flat = pred_flat.max(-1)
         v_backward = v_flat.view(seq_len, batch_size)
         enc_loss += criterion(pred[1:].view(-1, V), autograd.Variable(
             encoder_batch[:-1].view(-1)))
 
-        # asdfasdf
         if printing:
             encoder_debug += 'epoch %s encoder:\n' % epoch
             for n in range(min(4, N)):
@@ -377,8 +309,6 @@ while True:
 
     enc_state = autograd.Variable(torch.zeros(2, batch_size, hidden_size))
     enc_out, enc_state, enc_loss = encode(encoder_batch, enc_state)
-    # print('annotations.size()', annotations.size())
-    # asdf()
     loss += enc_loss
 
     # decode
@@ -393,8 +323,6 @@ while True:
 
             alignment_out = alignment_model(
                 enc_out=enc_out, prev_dec_state=dec_state)
-            print('alignment_out.size()', alignment_out.size())
-            print('enc_out.size()', enc_out.size())
 
             """
             alignment_out is [batch_size][seq_len]
@@ -407,33 +335,17 @@ while True:
             alignment_out = alignment_out.transpose(0, 1).contiguous().view(
                 seq_len, batch_size, 1).expand(
                 seq_len, batch_size, hidden_size * 2)
-            print('alignment_out.size()', alignment_out.size())
 
-            # enc_out = enc_out.view(seq_len, batch_size, hidden_size * 2)
-            # print('enc_out.size()', enc_out.size())
-
-            # print('dec_state.size()', dec_state.size())
-            # annotations_t = annotations[t]
-            # print('annotations_t.size()', annotations_t.size())
-            # annotations_cat_state = torch.cat([annotations_t, dec_state.view(batch_size, hidden_size)], 1)
-            # print('annotations_cat_state.size()', annotations_cat_state.size())
-            # attention_logits = alignment_model(annotations_cat_state)
-            # attention_softmax = F.softmax(attention_logits)
-            # print('attention_softmax', attention_softmax)
-            # attention_softmax_exp = attention_softmax.view(seq_len, batch_size, 1).expand_as(annotations)
-            # print('attention_softmax_exp.size()', attention_softmax_exp.size())
             context = (alignment_out * enc_out)
-            print('context.size()', context.size())
             context = context.sum(0)
-            print('context.size()', context.size())
             context = context.view(batch_size, hidden_size * 2)
-            print('context.size()', context.size())
 
             # prev_state = state
             # pred_c_embedded_batch, state = decoder(
             #     autograd.Variable(prev_c_batch), state)
 
             asadsfasdf()
+
             pred_c_batch = pred_c_embedded_batch.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
             _, v_batch = pred_c_batch.max(-1)
             v_batch = v_batch.data.view(1, -1)
