@@ -19,8 +19,8 @@ N = 100
 # N = 8
 N = 16
 max_sentence_len = 10
-N = 4
-print_every = 2
+# N = 4
+print_every = 8  # should be even, so matches teacher_forcing == False
 hidden_size = 16
 # hidden_size = 1024
 hidden_size = 256
@@ -114,7 +114,9 @@ while True:
     encoder_debug = ''
     decoder_debug = ''
 
-    teacher_forcing = (epoch % print_every) != 0
+    # teacher_forcing = (epoch % print_every) != 0
+    teacher_forcing = epoch % 2 != 0
+    printing = epoch % print_every == 0
 
     loss = 0
     criterion = torch.nn.NLLLoss()
@@ -132,7 +134,8 @@ while True:
         enc_loss = criterion(pred[:-1].view(-1, V), autograd.Variable(
             encoder_batch[1:].view(-1)))
 
-        if epoch % print_every == 0:
+        # if epoch % print_every == 0:
+        if printing:
             encoder_debug += 'epoch %s encoder:\n' % epoch
             for n in range(min(4, N)):
                 input_sentence_verify = encoding.decode_passage(encoder_batch[:, n])
@@ -157,15 +160,16 @@ while True:
             pred_c_batch = pred_c_embedded_batch.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
             _, v_batch = pred_c_batch.max(-1)
             v_batch = v_batch.data.view(1, -1)
-            for n in range(batch_size):
-                output_sentences[n] += encoding.char_by_idx[v_batch[0][n]]
+            if printing:
+                for n in range(batch_size):
+                    output_sentences[n] += encoding.char_by_idx[v_batch[0][n]]
             loss += criterion(pred_c_batch, autograd.Variable(target_c_batch))
 
             if teacher_forcing:
                 prev_c_batch = target_c_batch.view(1, -1)
             else:
                 prev_c_batch = v_batch
-        if epoch % print_every == 0:
+        if printing:
             decoder_debug += 'epoch %s decoder:\n' % epoch
             if not teacher_forcing:
                 for n in range(min(4, N)):

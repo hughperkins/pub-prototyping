@@ -180,3 +180,19 @@ epoch 92 decoder:
     [When did y] => [Quand êtes] [Que]
 ```
 kind of ok
+
+seq2seq_noattention_trainbyparts.py v3 (ie with batching across n and t):
+```
+epoch 304 encoder:
+    [<start>I'm glad w<end>] => [I m glad w<end>e]
+    [<start>When did y<end>] => [Ihen did y<end>p]
+    [<start>Somebody a<end>] => [Ihmebody a<end> ]
+    [<start>He was lea<end>] => [Ie was lea<end><end>]
+
+epoch 304 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis <end><end><end>]
+    [When did y] => [Quand êtes] [Quel est  <end>]
+    [Somebody a] => [Quelqu'un ] [Quel est  <end>]
+    [He was lea] => [Il s'appuy] [Il s'a re <end>]
+```
+with: N=16, hidden_size=256, max_sentence_len=10
