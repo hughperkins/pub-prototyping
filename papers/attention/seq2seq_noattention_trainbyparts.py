@@ -134,7 +134,6 @@ while True:
         enc_loss = criterion(pred[:-1].view(-1, V), autograd.Variable(
             encoder_batch[1:].view(-1)))
 
-        # if epoch % print_every == 0:
         if printing:
             encoder_debug += 'epoch %s encoder:\n' % epoch
             for n in range(min(4, N)):
