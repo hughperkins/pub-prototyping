@@ -1,11 +1,12 @@
 """
 Handles converting from sentences <=> numpy arrays of integers
 """
-import numpy as np
+import torch
 
 
 char_by_idx = {}
 idx_by_char = {}
+
 
 def add_char(c):
     if c in idx_by_char:
@@ -21,12 +22,17 @@ def encode_char(c):
 
 
 def encode_passage(sentence):
-    encoded = np.zeros((len(sentence) + 2,), dtype=np.int32)
+    encoded = torch.LongTensor(len(sentence) + 2)
     encoded[0] = start_code
     for i, c in enumerate(sentence):
         encoded[i + 1] = add_char(c)
     encoded[len(sentence) + 1] = end_code
     return encoded
+
+
+def decode_passage(encoded):
+    decoded = [char_by_idx[c_enc] for c_enc in encoded.contiguous().view(-1)]
+    return ''.join(decoded)
 
 
 # training_encoded = []

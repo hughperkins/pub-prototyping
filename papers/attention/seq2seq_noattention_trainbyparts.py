@@ -43,6 +43,16 @@ for i, example in enumerate(training):
 V = len(encoding.char_by_idx)
 print('vocab size %s' % V)
 
+batch_size = N  # since N is no greater than 256 for these toy models anyway
+seq_len = max_sentence_len + 2  # add 2 for start/end tokens
+encoder_batch = torch.LongTensor(seq_len, batch_size)
+decoder_batch = torch.LongTensor(seq_len, batch_size)
+print('encoder_batch.size()', encoder_batch.size())
+print('decoder_batch.size()', decoder_batch.size())
+for n in range(N):
+    encoder_batch[:, n] = training[n]['input_encoded']
+    decoder_batch[:, n] = training[n]['target_encoded']
+
 torch.manual_seed(123)
 np.random.seed(123)
 
@@ -103,76 +113,71 @@ epoch = 0
 while True:
     encoder_debug = ''
     decoder_debug = ''
-    for n, ex in enumerate(training):
-        input_encoded = ex['input_encoded']
-        target_encoded = ex['target_encoded']
 
-        teacher_forcing = (epoch % print_every) != 0
+    teacher_forcing = (epoch % print_every) != 0
 
-        loss = 0
-        criterion = torch.nn.NLLLoss()
+    loss = 0
+    criterion = torch.nn.NLLLoss()
 
-        # encode
-        def encode(input_encoded, state):
-            global encoder_debug
+    # encode
+    def encode(encoder_batch, state):
+        global encoder_debug
 
-            input_sentence_verify = encoding.decode_passage(input_encoded)
+        pred_embedded, state = encoder(autograd.Variable(encoder_batch), state)
+        pred_flat = pred_embedded.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
+        pred = pred_flat.view(seq_len, batch_size, V)
+        _, v_flat = pred_flat.max(-1)
+        v = v_flat.view(seq_len, batch_size)
 
-            pred_embedded, state = encoder(autograd.Variable(torch.from_numpy(input_encoded).view(-1, 1)), state)
-            pred = pred_embedded.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
-            _, v = pred.max(-1)
+        enc_loss = criterion(pred[:-1].view(-1, V), autograd.Variable(
+            encoder_batch[1:].view(-1)))
 
-            sentence = encoding.decode_passage(v.data.cpu().numpy())
-
-            enc_loss = criterion(pred[:-1], autograd.Variable(
-                torch.from_numpy(input_encoded[1:]).view(-1)))
-
-            if n <= 4 and epoch % print_every == 0:
-                if n == 0:
-                    encoder_debug += 'epoch %s encoder:\n' % epoch
+        if epoch % print_every == 0:
+            encoder_debug += 'epoch %s encoder:\n' % epoch
+            for n in range(min(4, N)):
+                input_sentence_verify = encoding.decode_passage(encoder_batch[:, n])
+                sentence = encoding.decode_passage(v.data.cpu()[:, n])
                 encoder_debug += '    [%s] => [%s]\n' % (input_sentence_verify, sentence)
-            return state, enc_loss
+        return state, enc_loss
 
-        state = autograd.Variable(torch.zeros(1, 1, hidden_size))
-        state, enc_loss = encode(input_encoded, state)
-        loss += enc_loss
+    state = autograd.Variable(torch.zeros(1, batch_size, hidden_size))
+    state, enc_loss = encode(encoder_batch, state)
+    loss += enc_loss
 
-        # decode
-        if True:
-            prev_c = encoding.start_code
+    # decode
+    if True:
+        output_sentences = ['' for n in range(batch_size)]
 
-            output_sentence = ''
-            for t, target_c in enumerate(target_encoded[1:]):
-                target_c = target_c.item()
+        prev_c_batch = decoder_batch[0].view(1, -1)
+        for t in range(1, seq_len):
+            target_c_batch = decoder_batch[t]
 
-                pred_c_embedded, state = decoder(
-                    autograd.Variable(torch.LongTensor([[prev_c]])), state)
-                pred_c = pred_c_embedded.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
-                _, v = pred_c.max(-1)
-                v = v.data[0][0]
-                output_sentence += encoding.char_by_idx[v]
-                loss += criterion(pred_c, autograd.Variable(torch.LongTensor(
-                    [target_c])))
+            pred_c_embedded_batch, state = decoder(
+                autograd.Variable(prev_c_batch), state)
+            pred_c_batch = pred_c_embedded_batch.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
+            _, v_batch = pred_c_batch.max(-1)
+            v_batch = v_batch.data.view(1, -1)
+            for n in range(batch_size):
+                output_sentences[n] += encoding.char_by_idx[v_batch[0][n]]
+            loss += criterion(pred_c_batch, autograd.Variable(target_c_batch))
 
-                if teacher_forcing:
-                    prev_c = target_c
-                else:
-                    # if we're already wrong, let's just abandon...
-                    if target_c != v:
-                        break
-                    prev_c = v
-            if n <= 1 and epoch % print_every == 0:
-                if n == 0:
-                    decoder_debug += 'epoch %s decoder:\n' % epoch
-                if not teacher_forcing:
+            if teacher_forcing:
+                prev_c_batch = target_c_batch.view(1, -1)
+            else:
+                prev_c_batch = v_batch
+        if epoch % print_every == 0:
+            decoder_debug += 'epoch %s decoder:\n' % epoch
+            if not teacher_forcing:
+                for n in range(min(4, N)):
+                    ex = training[n]
                     decoder_debug += '    [%s] => [%s] [%s]\n' % (
-                        ex['input'], ex['target'], output_sentence)
-        embedding.zero_grad()
-        encoder.zero_grad()
-        decoder.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm(parameters, 4.0)
-        opt.step()
+                        ex['input'], ex['target'], output_sentences[n])
+    embedding.zero_grad()
+    encoder.zero_grad()
+    decoder.zero_grad()
+    loss.backward()
+    torch.nn.utils.clip_grad_norm(parameters, 4.0)
+    opt.step()
 
     if encoder_debug != '':
         print(encoder_debug)
