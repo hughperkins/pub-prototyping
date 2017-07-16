@@ -13,17 +13,11 @@ import encoding
 import data_anki as data
 
 
-N = 100
-# N = 8
 N = 16
 max_sentence_len = 10
-# N = 4
+num_layers = 2
 print_every = 8  # should be even, so matches teacher_forcing == False
-hidden_size = 16
-# hidden_size = 1024
 hidden_size = 256
-# num_epochs = 16
-# N = 10
 
 
 training = data.Data().get_training(N=N)
@@ -64,7 +58,7 @@ class Encoder(nn.Module):
         self.rnn_enc = nn.RNN(
             input_size=self.hidden_size,
             hidden_size=self.hidden_size,
-            num_layers=1,
+            num_layers=num_layers,
             nonlinearity='tanh'
         )
 
@@ -83,7 +77,7 @@ class Decoder(nn.Module):
         self.rnn_dec = nn.RNN(
             input_size=self.hidden_size,
             hidden_size=self.hidden_size,
-            num_layers=1,
+            num_layers=num_layers,
             nonlinearity='tanh'
         )
 
@@ -142,7 +136,7 @@ while True:
                 encoder_debug += '    [%s] => [%s]\n' % (input_sentence_verify, sentence)
         return state, enc_loss
 
-    state = autograd.Variable(torch.zeros(1, batch_size, hidden_size))
+    state = autograd.Variable(torch.zeros(num_layers, batch_size, hidden_size))
     state, enc_loss = encode(encoder_batch, state)
     loss += enc_loss
 
