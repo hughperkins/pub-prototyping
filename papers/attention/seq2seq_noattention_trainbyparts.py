@@ -1,10 +1,8 @@
 """
-In this version, we'll train each language model separately,
-or at least teacher-force-train the encoder, not just the decoder
+pytorch seq2seq
 
-The link between encoder and decoder does seem pretty brittle though...
+designed for rapid prototyping, so trains super quickly, on just a few examples
 """
-
 import torch
 from torch import nn, autograd, optim
 import numpy as np
@@ -126,6 +124,8 @@ while True:
         global encoder_debug
 
         pred_embedded, state = encoder(autograd.Variable(encoder_batch), state)
+        # pred_embedded is: [seq_len][batch_size][hidden_size]
+        # embedding: [input_size][hidden_size]
         pred_flat = pred_embedded.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
         pred = pred_flat.view(seq_len, batch_size, V)
         _, v_flat = pred_flat.max(-1)
@@ -151,6 +151,7 @@ while True:
         output_sentences = ['' for n in range(batch_size)]
 
         prev_c_batch = decoder_batch[0].view(1, -1)
+        # prev_c_batch [seq_len=1][batch_size]
         for t in range(1, seq_len):
             target_c_batch = decoder_batch[t]
 
