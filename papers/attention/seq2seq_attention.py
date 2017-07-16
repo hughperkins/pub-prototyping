@@ -91,25 +91,6 @@ class Encoder(nn.Module):
         return x, state
 
 
-class Decoder(nn.Module):
-    def __init__(self, embedding):
-        super().__init__()
-        self.input_size = embedding.weight.size()[0]
-        self.hidden_size = embedding.weight.size()[1]
-        self.embedding = embedding
-        self.rnn_dec = nn.RNN(
-            input_size=self.hidden_size,
-            hidden_size=self.hidden_size,
-            num_layers=1,
-            nonlinearity='tanh'
-        )
-
-    def forward(self, x, state):
-        x = self.embedding(x)
-        x, state = self.rnn_dec(x, state)
-        return x, state
-
-
 class AlignmentModel(nn.Module):
     def __init__(self, seq_len, hidden_size):
         super().__init__()
@@ -210,8 +191,6 @@ class AlignmentModel(nn.Module):
         """
 
         prev_dec_state = prev_dec_state.view(batch_size, hidden_size)
-        print('prev_dec_state.size()', prev_dec_state.size())
-        print('self.W.size()', self.W.size())
         prev_dec_state_W = prev_dec_state @ self.W
         enc_out_U = enc_out.view(seq_len * batch_size, hidden_size * 2) @ \
             self.U.transpose(0, 1)
@@ -219,16 +198,33 @@ class AlignmentModel(nn.Module):
         prev_dec_state_W_exp = prev_dec_state_W \
             .view(1, batch_size, hidden_size) \
             .expand(seq_len, batch_size, hidden_size)
-        print('enc_out_U.size()', enc_out_U.size())
-        print('prev_dec_state_W_exp.size()', prev_dec_state_W_exp.size())
         x = F.tanh(enc_out_U + prev_dec_state_W_exp)
         x = x.view(seq_len * batch_size, hidden_size) @ self.v.view(-1, 1)
         x = x.view(seq_len, batch_size)
         x = x.transpose(0, 1)
-        print('x.size after transpose', x.size())
         x = F.softmax(x)
-        print('x.size()', x.size())
         return x
+
+
+class Decoder(nn.Module):
+    def __init__(self, embedding):
+        super().__init__()
+        self.input_size = embedding.weight.size()[0]
+        self.hidden_size = embedding.weight.size()[1]
+        self.embedding = embedding
+        self.context_layer = nn.Linear(self.hidden_size * 2, self.hidden_size)
+        self.rnn_dec = nn.RNN(
+            input_size=self.hidden_size,
+            hidden_size=self.hidden_size,
+            num_layers=1,
+            nonlinearity='tanh'
+        )
+
+    def forward(self, input, context, state):
+        input = self.embedding(input)
+        context = self.context_layer(context)
+        dec_out, state = self.rnn_dec(input + context, state)
+        return dec_out, state
 
 
 optimizer_fn = optim.Adam
@@ -288,7 +284,8 @@ while True:
             encoder_batch[1:].view(-1)))
 
         # and backward...
-        pred_flat = pred_embedded[:, :, hidden_size:].contiguous().view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
+        pred_flat = pred_embedded[:, :, hidden_size:].contiguous().view(
+            -1, hidden_size) @ embedding_matrix.transpose(0, 1)
         pred = pred_flat.view(seq_len, batch_size, V)
         _, v_flat = pred_flat.max(-1)
         v_backward = v_flat.view(seq_len, batch_size)
@@ -318,7 +315,7 @@ while True:
         dec_state = autograd.Variable(torch.zeros(1, batch_size, hidden_size))
         prev_c_batch = decoder_batch[0].view(1, -1)
         for t in range(1, seq_len):
-            print('decoder t=%s' % t)
+            # print('decoder t=%s' % t)
             target_c_batch = decoder_batch[t]
 
             alignment_out = alignment_model(
@@ -340,12 +337,15 @@ while True:
             context = context.sum(0)
             context = context.view(batch_size, hidden_size * 2)
 
+            dec_out, dec_state = decoder(autograd.Variable(prev_c_batch), context, dec_state)
+            # print('dec_out.size()', dec_out.size())
+            # print('dec_state.size()', dec_state.size())
+
             # prev_state = state
             # pred_c_embedded_batch, state = decoder(
             #     autograd.Variable(prev_c_batch), state)
 
-            asadsfasdf()
-
+            pred_c_embedded_batch = dec_out
             pred_c_batch = pred_c_embedded_batch.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
             _, v_batch = pred_c_batch.max(-1)
             v_batch = v_batch.data.view(1, -1)
