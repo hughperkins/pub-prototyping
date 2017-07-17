@@ -196,3 +196,292 @@ epoch 304 decoder:
     [He was lea] => [Il s'appuy] [Il s'a re <end>]
 ```
 with: N=16, hidden_size=256, max_sentence_len=10
+
+
+with commit 3d024b4 of seqtoseq_attention.py, working ok :-)
+- using N=4
+- hidden_size=256
+- max_sentence_len = 4
+
+try N = 16 => harder, eg:
+```
+epoch 1008 encoder:
+    forward [<start>I'm glad w<end>] => [I m glad w<end>]
+    forward [<start>When did y<end>] => [Ihe  did y<end>]
+    forward [<start>Somebody a<end>] => [Ihme ody a<end>]
+    forward [<start>He was lea<end>] => [Ie was lea<end>]
+    back [<start>I'm glad w<end>] => [<start>I'm glad  ]
+    back [<start>When did y<end>] => [<start>Whea did  ]
+    back [<start>Somebody a<end>] => [<start>Somebody  ]
+    back [<start>He was lea<end>] => [<start>He w's l  ]
+
+epoch 1008 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis   <end>]
+    [When did y] => [Quand êtes] [Quesd êtest]
+    [Somebody a] => [Quelqu'un ] [Quelqu'un <end>]
+    [He was lea] => [Il s'appuy] [Il s'appuy<end>]
+```
+
+drop hidden_size to 128:
+```
+
+epoch 1440 encoder:
+    forward [<start>I'm glad w<end>] => [S m glad w<end>]
+    forward [<start>When did y<end>] => [Sha  did y<end>]
+    forward [<start>Somebody a<end>] => [Shmebody a<end>]
+    forward [<start>He was lea<end>] => [Se was lea<end>]
+    back [<start>I'm glad w<end>] => [<start>I'm glad  ]
+    back [<start>When did y<end>] => [<start>When did  ]
+    back [<start>Somebody a<end>] => [<start>Somebo e  ]
+    back [<start>He was lea<end>] => [<start>He w's l  ]
+
+epoch 1440 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis ra<end>]
+    [When did y] => [Quand êtes] [Quend êtes<end>]
+    [Somebody a] => [Quelqu'un ] [Queluu'ui <end>]
+    [He was lea] => [Il s'appuy] [Il s'appuy<end>]
+```
+
+drop hidden size to 64, struggles:
+```
+
+epoch 1328 encoder:
+    forward [<start>I'm glad w<end>] => [I   w<end>a  w ]
+    forward [<start>When did y<end>] => [Ihe       <end>]
+    forward [<start>Somebody a<end>] => [Ihue o   a<end>]
+    forward [<start>He was lea<end>] => [Ie wa   oa<end>]
+    back [<start>I'm glad w<end>] => [<start>I'  glad  ]
+    back [<start>When did y<end>] => [<start>Whe  did  ]
+    back [<start>Somebody a<end>] => [<start>Somebod   ]
+    back [<start>He was lea<end>] => [<start>He wa  l  ]
+
+epoch 1328 decoder:
+    [I'm glad w] => [Je suis ra] [Je         ]
+    [When did y] => [Quand êtes] [Qu         ]
+    [Somebody a] => [Quelqu'un ] [Que  uu  uu]
+    [He was lea] => [Il s'appuy] [Il         ]
+```
+
+N=32, hidden_size=256, getting slow, results fairly junky after 1000 epochs:
+```
+
+epoch 1232 encoder:
+    forward [<start>I'm glad w<end>] => [H s wlad w<end>]
+    forward [<start>When did y<end>] => [Hhe  d s wo]
+    forward [<start>Somebody a<end>] => [Hhme  u  <end><end>]
+    forward [<start>He was lea<end>] => [He w<end><end> de <end>]
+    back [<start>I'm glad w<end>] => [<start>Ioe  hed t]
+    back [<start>When did y<end>] => [<start> hee ded t]
+    back [<start>Somebody a<end>] => [<start>loheblee t]
+    back [<start>He was lea<end>] => [<start>He h's   t]
+
+epoch 1232 decoder:
+    [I'm glad w] => [Je suis ra] [Je s  <end> <end><end><end>]
+    [When did y] => [Quand êtes] [Ques  s es<end>]
+    [Somebody a] => [Quelqu'un ] [Que  u'uu <end>]
+    [He was lea] => [Il s'appuy] [Il s'ap<end>u <end>]
+```
+=> maybe need faster machine?
+
+add logging of epoch time. weirdly, tis twice as slow on a c4.4xlarge than on the Mac:
+
+Mac:
+```
+epoch 64 encoder:
+    forward [<start>I'm glad w<end>] => [I s wl   w<end>]
+    forward [<start>When did y<end>] => [Ihe  w s w ]
+    forward [<start>Somebody a<end>] => [Ihu   u  w<end>]
+    forward [<start>He was lea<end>] => [Ie w<end><end> tl  ]
+    back [<start>I'm glad w<end>] => [<start>toe  hed  ]
+    back [<start>When did y<end>] => [<start> hee hed  ]
+    back [<start>Somebody a<end>] => [<start>  h dlee  ]
+    back [<start>He was lea<end>] => [<start>He h'e    ]
+
+epoch 64 decoder:
+    [I'm glad w] => [Je suis ra] [Je         ]
+    [When did y] => [Quand êtes] [Je         ]
+    [Somebody a] => [Quelqu'un ] [Je         ]
+    [He was lea] => [Il s'appuy] [Il         ]
+
+time per epoch 0.13007281720638275
+```
+
+c4.4xlarge:
+```
+epoch 96 encoder:
+    forward [<start>I'm glad w<end>] => [I s wla  w<end>]
+    forward [<start>When did y<end>] => [Ihe  w s wo]
+    forward [<start>Somebody a<end>] => [Ihm   u  w<end>]
+    forward [<start>He was lea<end>] => [Ie w<end><end> tl  ]
+    back [<start>I'm glad w<end>] => [<start>toe  hed  ]
+    back [<start>When did y<end>] => [<start> hee hed  ]
+    back [<start>Somebody a<end>] => [<start>l h dlee  ]
+    back [<start>He was lea<end>] => [<start>He h'e    ]
+
+epoch 96 decoder:
+    [I'm glad w] => [Je suis ra] [Je         ]
+    [When did y] => [Quand êtes] [Il         ]
+    [Somebody a] => [Quelqu'un ] [Ile        ]
+    [He was lea] => [Il s'appuy] [Il         ]
+
+time per epoch 0.3063374161720276
+```
+
+on an aws g2.xlarge, with cuda enabled:
+```
+epoch 96 decoder:
+    [I'm glad w] => [Je suis ra] [Je         ]
+    [When did y] => [Quand êtes] [Il         ]
+    [Somebody a] => [Quelqu'un ] [Ile        ]
+    [He was lea] => [Il s'appuy] [Il         ]
+
+time per epoch 0.061708614230155945
+```
+(twice as fast as mac laptop, but only twice as fast...)
+
+on an aws p2.xlarge:
+```
+epoch 128 encoder:
+    forward [<start>I'm glad w<end>] => [I s wla  w<end>]
+    forward [<start>When did y<end>] => [Ihe  w s wo]
+    forward [<start>Somebody a<end>] => [Ihm   u  <end><end>]
+    forward [<start>He was lea<end>] => [Ie w<end><end> tl  ]
+    back [<start>I'm glad w<end>] => [<start>toe  hed  ]
+    back [<start>When did y<end>] => [<start> hee hed  ]
+    back [<start>Somebody a<end>] => [<start>l h dlee  ]
+    back [<start>He was lea<end>] => [<start>He h'e    ]
+
+epoch 128 decoder:
+    [I'm glad w] => [Je suis ra] [Je         ]
+    [When did y] => [Quand êtes] [Jee    ee  ]
+    [Somebody a] => [Quelqu'un ] [Jle   ee   ]
+    [He was lea] => [Il s'appuy] [Il         ]
+
+time per epoch 0.04161100089550018
+```
+50% fatser than g2 :-)
+
+try increasing neurons, N=32, H=512:
+```
+epoch 1216 encoder:
+    forward [<start>I'm glad w<end>] => [I s glad w<end>]
+    forward [<start>When did y<end>] => [Ihe  did <end><end>]
+    forward [<start>Somebody a<end>] => [Ihme  d  a<end>]
+    forward [<start>He was lea<end>] => [Ie was lea<end>]
+    back [<start>I'm glad w<end>] => [<start>I'm  lad  ]
+    back [<start>When did y<end>] => [<start>Thee ded  ]
+    back [<start>Somebody a<end>] => [<start>Somebode  ]
+    back [<start>He was lea<end>] => [<start>He was    ]
+
+epoch 1216 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis ra<end>]
+    [When did y] => [Quand êtes] [Quan  êtes<end>]
+    [Somebody a] => [Quelqu'un ] [Quelqueun <end>]
+    [He was lea] => [Il s'appuy] [Il s a pu<end><end>]
+
+time per epoch 0.
+...
+epoch 2064 encoder:
+    forward [<start>I'm glad w<end>] => [W s glad w<end>]
+    forward [<start>When did y<end>] => [Whe  did <end><end>]
+    forward [<start>Somebody a<end>] => [Whme  d  a<end>]
+    forward [<start>He was lea<end>] => [We was lea<end>]
+    back [<start>I'm glad w<end>] => [<start>I'm  lad  ]
+    back [<start>When did y<end>] => [<start>When ded  ]
+    back [<start>Somebody a<end>] => [<start>Somebode  ]
+    back [<start>He was lea<end>] => [<start>He was    ]
+
+epoch 2064 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis ra<end>]
+    [When did y] => [Quand êtes] [Quand êtes<end>]
+    [Somebody a] => [Quelqu'un ] [Quelqueun <end>]
+    [He was lea] => [Il s'appuy] [Il s appuy<end>]
+
+time per epoch 0.05154143273830414
+```
+(running on p2)
+
+
+try N=64,H=512, fairly junky:
+```
+epoch 1680 encoder:
+    forward [<start>I'm glad w<end>] => [I   <end>oad <end>a]
+    forward [<start>When did y<end>] => [Iha  <end>os <end><end>]
+    forward [<start>Somebody a<end>] => [Ihm      <end><end>]
+    forward [<start>He was lea<end>] => [Ie <end>an <end><end> <end>]
+    back [<start>I'm glad w<end>] => [<start>Ioe  hee  ]
+    back [<start>When did y<end>] => [<start>Whee dee  ]
+    back [<start>Somebody a<end>] => [<start>To  deee  ]
+    back [<start>He was lea<end>] => [<start>He hie    ]
+
+epoch 1680 decoder:
+    [I'm glad w] => [Je suis ra] [Je su s <end><end><end>]
+    [When did y] => [Quand êtes] [Que e  te <end>]
+    [Somebody a] => [Quelqu'un ] [Quel ueuu <end>]
+    [He was lea] => [Il s'appuy] [Il se  pu<end><end>]
+
+time per epoch 0.0611894428730011
+```
+
+incrase H to 1024, N=64,H=512, decoder output ok. weirdly, the encoder output is junky:
+```
+epoch 1008 encoder:
+    forward [<start>I'm glad w<end>] => [I m goa<end> w<end>]
+    forward [<start>When did y<end>] => [Iha  dos <end><end>]
+    forward [<start>Somebody a<end>] => [Ihm  od  <end><end>]
+    forward [<start>He was lea<end>] => [Ie wan <end>e<end><end>]
+    back [<start>I'm glad w<end>] => [<start>Iom  hed  ]
+    back [<start>When did y<end>] => [<start>Whee hed  ]
+    back [<start>Somebody a<end>] => [<start> o  bode  ]
+    back [<start>He was lea<end>] => [<start>He has    ]
+
+epoch 1008 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis ra<end>]
+    [When did y] => [Quand êtes] [Quand êtes<end>]
+    [Somebody a] => [Quelqu'un ] [Quelqu'un <end>]
+    [He was lea] => [Il s'appuy] [Il s'appuy<end>]
+
+time per epoch 0.13847991824150085
+```
+
+try max sentence length 20, go back to N=16, H=256, junky:
+```
+epoch 2112 encoder:
+    forward [<start>I'm glad we agree on<end>] => [W m ela  ee e re  en<end>]
+    forward [<start>When did you become <end>] => [Whe  e n eou ee oue e]
+    forward [<start>He was leaning again<end>] => [We ee  ee   n<end> a r n<end>]
+    forward [<start>She always got up ea<end>] => [Whe e ee   eou e  e  ]
+    back [<start>I'm glad we agree on<end>] => [<start>I'e glee ee a ree on]
+    back [<start>When did you become <end>] => [<start>Whee dee  oe re oeen]
+    back [<start>He was leaning again<end>] => [<start>ee  ae l enine a  on]
+    back [<start>She always got up ea<end>] => [<start>Wee     ae  ee ue  n]
+
+epoch 2112 decoder:
+    [I'm glad we agree on] => [Je suis ravi que nou] [Je  ui  e            ]
+    [When did you become ] => [Quand êtes-vous deve] [Quen  eeeeeeeeeeeeeee]
+    [He was leaning again] => [Il s'appuyait contre] [Il n e  e            ]
+    [She always got up ea] => [Elle se levait toujo] [Elle ee eeeeeeeeeeeee]
+
+time per epoch 0.07332244515419006
+```
+
+try S=20,N=64,H=512, junktastic:
+```
+epoch 2176 encoder:
+    forward [<start>I'm glad we agree on<end>] => [I m  oee te te e  te ]
+    forward [<start>When did you become <end>] => [Iee  t e tou te e   t]
+    forward [<start>He was leaning again<end>] => [Ie  e  te   n  te en ]
+    forward [<start>She always got up ea<end>] => [Ihe  ee    toe te ee ]
+    back [<start>I'm glad we agree on<end>] => [<start>Ioe   ee ee    ee ee]
+    back [<start>When did you become <end>] => [<start> eee eee  oe     eee]
+    back [<start>He was leaning again<end>] => [<start>ee  ee   e ene    ee]
+    back [<start>She always got up ea<end>] => [<start> ee     ee   e ee  e]
+
+epoch 2176 decoder:
+    [I'm glad we agree on] => [Je suis ravi que nou] [Je  ue  eeeeeeeeeeeee]
+    [When did you become ] => [Quand êtes-vous deve] [Qu eeeeeeeeeeeeeeeeee]
+    [He was leaning again] => [Il s'appuyait contre] [Il s'appuyait eeeeeee]
+    [She always got up ea] => [Elle se levait toujo] [Elle  e eeeeeeeeeeeee]
+
+time per epoch 0.1375909149646759
+```
