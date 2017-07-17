@@ -1,0 +1,111 @@
+
+N=16,H=64,L=2,S=10, ok:
+```
+epoch 928 encoder:
+    [<start>I'm glad w<end>] => [I   <end>lad w<end>e]
+    [<start>When did y<end>] => [Ihe  did y<end> ]
+    [<start>Somebody a<end>] => [Ihme od  a<end>q]
+    [<start>He was lea<end>] => [Ie was lea<end>o]
+
+epoch 928 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis ra<end>]
+    [When did y] => [Quand êtes] [Quand  tes<end>]
+    [Somebody a] => [Quelqu'un ] [Quel u'un <end>]
+    [He was lea] => [Il s'appuy] [Il s'appu <end>]
+```
+
+H=32, not so great:
+```
+epoch 2096 encoder:
+    [<start>I'm glad w<end>] => [Ill glal wlY]
+    [<start>When did y<end>] => [Ihal lillalc]
+    [<start>Somebody a<end>] => [Ihle ole llc]
+    [<start>He was lea<end>] => [Ie wal lellh]
+
+epoch 2096 decoder:
+    [I'm glad w] => [Je suis ra] [Je luil lll]
+    [When did y] => [Quand êtes] [Queil êtell]
+    [Somebody a] => [Quelqu'un ] [Quel u'tl l]
+    [He was lea] => [Il s'appuy] [Il l'llllll]
+```
+
+N=32,H=64, not enough capacity:
+```
+epoch 2248 encoder:
+    [<start>I'm glad w<end>] => [I   <end>le  w<end>o]
+    [<start>When did y<end>] => [Ihe  civ t<end>n]
+    [<start>Somebody a<end>] => [Ihmebod  a<end>s]
+    [<start>He was lea<end>] => [Ie was lee<end> ]
+
+epoch 2248 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis re<end>]
+    [When did y] => [Quand êtes] [Quen  v<end>es<end>]
+    [Somebody a] => [Quelqu'un ] [Quel ueu  <end>]
+    [He was lea] => [Il s'appuy] [Il seestut<end>]
+```
+
+N=32,H=96,S=10, ok:
+```
+epoch 2712 encoder:
+    [<start>I'm glad w<end>] => [H m glad w<end>q]
+    [<start>When did y<end>] => [Hhen did y<end><end>]
+    [<start>Somebody a<end>] => [Hhme ody a<end><end>]
+    [<start>He was lea<end>] => [He cas lea<end>J]
+
+epoch 2712 decoder:
+    [I'm glad w] => [Je suis ra] [Je suis ra<end>]
+    [When did y] => [Quand êtes] [Quand êtes<end>]
+    [Somebody a] => [Quelqu'un ] [Quelqu'un <end>]
+    [He was lea] => [Il s'appuy] [Il s'appuy<end>]
+```
+
+
+N=64,H=96,L=2,S=10
+```
+epoch 4656 epoch_time 32ms
+encoder:
+    [<start>I'm glad w<end>] => [Y m soan w<end><end>]
+    [<start>When did y<end>] => [Yean djd o<end>o]
+    [<start>Somebody a<end>] => [Yhrenodo a<end>s]
+    [<start>He was lea<end>] => [Ye pan lea<end><end>]
+
+decoder:
+    [I'm glad w] => [Je suis ra] [Je suis ma<end>]
+    [When did y] => [Quand êtes] [Quand pnes<end>]
+    [Somebody a] => [Quelqu'un ] [Quelpueun <end>]
+    [He was lea] => [Il s'appuy] [Il n'apnuo<end>]
+```
+^^^ kind of ok. encoder pretty odd...
+
+N=64;S=20;L=2;H=96
+```
+epoch 5928 epoch_time 56ms
+encoder:
+    [<start>I'm glad we agree on<end>] => [W m nled we agree on<end> ]
+    [<start>When did you become <end>] => [When diq you senoue su]
+    [<start>He was leaning again<end>] => [We ses leaninv eceinn ]
+    [<start>She always got up ea<end>] => [Whe elaeys  ot hp ee<end> ]
+
+decoder:
+    [I'm glad we agree on] => [Je suis ravi que nou] [Je suis reli nue nou<end>]
+    [When did you become ] => [Quand êtes-vous deve] [Quand nnes nous deve<end>]
+    [He was leaning again] => [Il s'appuyait contre] [Il s'appuyait contre<end>]
+    [She always got up ea] => [Elle se levait toujo] [Elle se levait toupou]
+```
+=> ok
+
+N=128;S=20;L=2;H=96, not great:
+```
+epoch 9904 epoch_time 100ms
+encoder:
+    [<start>I'm glad we agree on<end>] => [Y <end> <end>aad te arree ornu]
+    [<start>When did you become <end>] => [Yeer <end>l<end> <end>ou <end>e<end>o<end>e <end>o]
+    [<start>He was leaning again<end>] => [Ye qar aeartr<end> a<end>air<end>o]
+    [<start>She always got up ea<end>] => [Yte a<end>aa<end>  <end>ot lr aa<end>u]
+
+decoder:
+    [I'm glad we agree on] => [Je suis ravi que nou] [Je ratt tuq<end>t<end>t<end><end><end><end><end><end>]
+    [When did you become ] => [Quand êtes-vous deve] [Quart <end>tera<end>lq <end>at<end><end><end>]
+    [He was leaning again] => [Il s'appuyait contre] [Il rat<end>tar<end>ra<end> <end>u<end><end>t<end>]
+    [She always got up ea] => [Elle se levait toujo] [Elle re derapt <end>u<end><end><end><end>]
+```

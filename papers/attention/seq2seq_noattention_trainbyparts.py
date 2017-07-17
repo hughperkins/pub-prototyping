@@ -8,23 +8,47 @@ from torch import nn, autograd, optim
 import numpy as np
 import math
 import sys
+import time
 import encoding
 # import data_starredwords as data
 import data_anki as data
 
 
-N = 16
-max_sentence_len = 10
-num_layers = 2
+# N => N
+# S => max_sentence_length
+# L => num_layers
+# H => hidden_size
+settings = 'N=128;S=20;L=2;H=96'
+
+settings_dict = {}
+for setting in settings.split(';'):
+    split_setting = setting.split('=')
+    k = split_setting[0]
+    v = int(split_setting[1])
+    settings_dict[k] = v
+N = settings_dict['N']
+max_sentence_len = settings_dict['S']
+num_layers = settings_dict['L']
+hidden_size = settings_dict['H']
+
+
 print_every = 8  # should be even, so matches teacher_forcing == False
-hidden_size = 256
 
 
-training = data.Data().get_training(N=N)
-training = [
-    {'input': ex['first'][:max_sentence_len], 'target': ex['second'][:max_sentence_len]}
-    for ex in training
-]
+# only use examples that are at least max_sentence_len long, to avoid having to
+# deal wtih padding:
+training = []
+while len(training) < N:
+    new_training = data.Data().get_training(N=N-len(training))
+    new_training = [
+        {'input': ex['first'][:max_sentence_len], 'target': ex['second'][:max_sentence_len]}
+        for ex in new_training
+        if len(ex['first']) >= max_sentence_len and len(ex['second']) >= max_sentence_len
+    ]
+    print('len(new_training)', len(new_training))
+    training += new_training
+print('len(training)', len(training))
+
 for n in range(min(N, 16)):
     print(n, training[n])
 
@@ -44,6 +68,17 @@ print('decoder_batch.size()', decoder_batch.size())
 for n in range(N):
     encoder_batch[:, n] = training[n]['input_encoded']
     decoder_batch[:, n] = training[n]['target_encoded']
+
+
+def cudafy(x):
+    if torch.cuda.is_available():
+        return x.cuda()
+    return x
+
+
+encoder_batch = cudafy(encoder_batch)
+decoder_batch = cudafy(decoder_batch)
+
 
 torch.manual_seed(123)
 np.random.seed(123)
@@ -95,6 +130,10 @@ encoder = Encoder(embedding=embedding)
 decoder = Decoder(embedding=embedding)
 embedding_matrix = embedding.weight
 
+cudafy(embedding)
+cudafy(encoder)
+cudafy(decoder)
+
 parameters = (
     set(encoder.parameters()) |
     set(decoder.parameters()) |
@@ -102,6 +141,7 @@ parameters = (
 opt = optimizer_fn(parameters, lr=0.001)
 
 epoch = 0
+start = time.time()
 while True:
     encoder_debug = ''
     decoder_debug = ''
@@ -117,7 +157,7 @@ while True:
     def encode(encoder_batch, state):
         global encoder_debug
 
-        pred_embedded, state = encoder(autograd.Variable(encoder_batch), state)
+        pred_embedded, state = encoder(cudafy(autograd.Variable(encoder_batch)), state)
         # pred_embedded is: [seq_len][batch_size][hidden_size]
         # embedding: [input_size][hidden_size]
         pred_flat = pred_embedded.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
@@ -125,18 +165,18 @@ while True:
         _, v_flat = pred_flat.max(-1)
         v = v_flat.view(seq_len, batch_size)
 
-        enc_loss = criterion(pred[:-1].view(-1, V), autograd.Variable(
-            encoder_batch[1:].view(-1)))
+        enc_loss = criterion(pred[:-1].view(-1, V), cudafy(autograd.Variable(
+            encoder_batch[1:].view(-1))))
 
         if printing:
-            encoder_debug += 'epoch %s encoder:\n' % epoch
+            encoder_debug += 'encoder:\n'
             for n in range(min(4, N)):
                 input_sentence_verify = encoding.decode_passage(encoder_batch[:, n])
                 sentence = encoding.decode_passage(v.data.cpu()[:, n])
                 encoder_debug += '    [%s] => [%s]\n' % (input_sentence_verify, sentence)
         return state, enc_loss
 
-    state = autograd.Variable(torch.zeros(num_layers, batch_size, hidden_size))
+    state = autograd.Variable(cudafy(torch.zeros(num_layers, batch_size, hidden_size)))
     state, enc_loss = encode(encoder_batch, state)
     loss += enc_loss
 
@@ -150,7 +190,7 @@ while True:
             target_c_batch = decoder_batch[t]
 
             pred_c_embedded_batch, state = decoder(
-                autograd.Variable(prev_c_batch), state)
+                cudafy(autograd.Variable(prev_c_batch)), state)
             pred_c_batch = pred_c_embedded_batch.view(-1, hidden_size) @ embedding_matrix.transpose(0, 1)
             _, v_batch = pred_c_batch.max(-1)
             v_batch = v_batch.data.view(1, -1)
@@ -164,7 +204,7 @@ while True:
             else:
                 prev_c_batch = v_batch
         if printing:
-            decoder_debug += 'epoch %s decoder:\n' % epoch
+            decoder_debug += 'decoder:\n'
             if not teacher_forcing:
                 for n in range(min(4, N)):
                     ex = training[n]
@@ -177,6 +217,14 @@ while True:
     torch.nn.utils.clip_grad_norm(parameters, 4.0)
     opt.step()
 
+    if printing:
+        print('-----------')
+        epoch_time = (time.time() - start) / print_every
+        epoch_time_str = '%.3fs' % epoch_time
+        if epoch_time < 1.0:
+            epoch_time_str = '%sms' % int(epoch_time * 1000)
+        print('epoch %s epoch_time %s' % (epoch, epoch_time_str))
+        start = time.time()
     if encoder_debug != '':
         print(encoder_debug)
     if decoder_debug != '':
