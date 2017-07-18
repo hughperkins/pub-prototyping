@@ -1,0 +1,75 @@
+try line_profiler, https://github.com/rkern/line_profiler. This is using cpu, on Mac:
+```
+   215       766        12314     16.1      0.2          prev_dec_state = prev_dec_state.view(batch_size, hidden_size)
+   216       766        58192     76.0      1.1          prev_dec_state_W = prev_dec_state @ self.W
+   217       766        11789     15.4      0.2          enc_out_U = enc_out.view(seq_len * batch_size, hidden_size * 2) @ \
+   218       766       906943   1184.0     17.8              self.U.transpose(0, 1)
+   219       766        16861     22.0      0.3          enc_out_U = enc_out_U.view(seq_len, batch_size, hidden_size)
+   220       766          718      0.9      0.0          prev_dec_state_W_exp = prev_dec_state_W \
+   221       766         9387     12.3      0.2              .view(1, batch_size, hidden_size) \
+   222       766        22198     29.0      0.4              .expand(seq_len, batch_size, hidden_size)
+   223       766      3851129   5027.6     75.8          x = F.tanh(enc_out_U + prev_dec_state_W_exp)
+   224       765        94756    123.9      1.9          x = x.view(seq_len * batch_size, hidden_size) @ self.v.view(-1, 1)
+   225       765        12272     16.0      0.2          x = x.view(seq_len, batch_size)
+   226       765        10090     13.2      0.2          x = x.transpose(0, 1)
+   227       765        74197     97.0      1.5          x = F.softmax(x)
+```
+(with settings = 'N=128;S=20;L=1;H=96')
+
+Looks ok. why is tanh so slow??? break it out a bit
+```
+   215      2585        40255     15.6      0.2          prev_dec_state = prev_dec_state.view(batch_size, hidden_size)
+   216      2585       182622     70.6      1.1          prev_dec_state_W = prev_dec_state @ self.W
+   217      2585        39752     15.4      0.2          enc_out_U = enc_out.view(seq_len * batch_size, hidden_size * 2) @ \
+   218      2585      3005655   1162.7     17.8              self.U.transpose(0, 1)
+   219      2585        53347     20.6      0.3          enc_out_U = enc_out_U.view(seq_len, batch_size, hidden_size)
+   220      2585         2367      0.9      0.0          prev_dec_state_W_exp = prev_dec_state_W \
+   221      2585        31246     12.1      0.2              .view(1, batch_size, hidden_size) \
+   222      2585        68789     26.6      0.4              .expand(seq_len, batch_size, hidden_size)
+   223      2585      2063555    798.3     12.2          x = enc_out_U + prev_dec_state_W_exp
+   224      2585     10745470   4156.9     63.7          x = F.tanh(x)
+   225      2585       304178    117.7      1.8          x = x.view(seq_len * batch_size, hidden_size) @ self.v.view(-1, 1)
+   226      2585        40751     15.8      0.2          x = x.view(seq_len, batch_size)
+   227      2585        32390     12.5      0.2          x = x.transpose(0, 1)
+   228      2585       243247     94.1      1.4          x = F.softmax(x)
+```
+tanh is slow :-O
+
+on an aws p2, using cuda:
+```
+   215      1714        32491     19.0      3.2          prev_dec_state = prev_dec_state.view(batch_size, hidden_size)
+   216      1714       142041     82.9     13.9          prev_dec_state_W = prev_dec_state @ self.W
+   217      1714        32529     19.0      3.2          enc_out_U = enc_out.view(seq_len * batch_size, hidden_size * 2) @ \
+   218      1714       151258     88.2     14.8              self.U.transpose(0, 1)
+   219      1714        31122     18.2      3.0          enc_out_U = enc_out_U.view(seq_len, batch_size, hidden_size)
+   220      1714         1607      0.9      0.2          prev_dec_state_W_exp = prev_dec_state_W \
+   221      1714        20390     11.9      2.0              .view(1, batch_size, hidden_size) \
+   222      1714        71055     41.5      6.9              .expand(seq_len, batch_size, hidden_size)
+   223      1714        67337     39.3      6.6          x = enc_out_U + prev_dec_state_W_exp
+   224      1714       114238     66.6     11.2          x = F.tanh(x)
+   225      1714       176838    103.2     17.3          x = x.view(seq_len * batch_size, hidden_size) @ self.v.view(-1, 1)
+   226      1714        29781     17.4      2.9          x = x.view(seq_len, batch_size)
+   227      1714        19575     11.4      1.9          x = x.transpose(0, 1)
+   228      1714       131338     76.6     12.8          x = F.softmax(x)
+```
+
+add some syncs, still on p2 cuda:
+```
+   220      2541        48584     19.1      2.6          prev_dec_state = prev_dec_state.view(batch_size, hidden_size)
+   221      2541       211774     83.3     11.4          prev_dec_state_W = prev_dec_state @ self.W
+   222      2541        48346     19.0      2.6          enc_out_U = enc_out.view(seq_len * batch_size, hidden_size * 2) @ \
+   223      2541       225530     88.8     12.1              self.U.transpose(0, 1)
+   224      2541        46828     18.4      2.5          enc_out_U = enc_out_U.view(seq_len, batch_size, hidden_size)
+   225      2541         2511      1.0      0.1          prev_dec_state_W_exp = prev_dec_state_W \
+   226      2541        30299     11.9      1.6              .view(1, batch_size, hidden_size) \
+   227      2541        92212     36.3      5.0              .expand(seq_len, batch_size, hidden_size)
+   228      2541        96198     37.9      5.2          x = enc_out_U + prev_dec_state_W_exp
+   229      2541       223889     88.1     12.0          cuda_sync()
+   230      2541       170755     67.2      9.2          x = F.tanh(x)
+   231      2541        62406     24.6      3.4          cuda_sync()
+   232      2541       281476    110.8     15.1          x = x.view(seq_len * batch_size, hidden_size) @ self.v.view(-1, 1)
+   233      2541        45434     17.9      2.4          cuda_sync()
+   234      2541        48591     19.1      2.6          x = x.view(seq_len, batch_size)
+   235      2541        29989     11.8      1.6          x = x.transpose(0, 1)
+   236      2541       194787     76.7     10.5          x = F.softmax(x)
+```
