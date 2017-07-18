@@ -48,3 +48,5 @@ data
 play.py
 play.ipynb
 *.lprof
+
+lastfailed
