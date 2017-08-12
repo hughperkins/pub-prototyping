@@ -3,6 +3,7 @@ from torch import nn, autograd, optim
 import torch.nn.functional as F
 import numpy as np
 import math
+import argparse
 import sys
 import time
 import encoding
@@ -23,13 +24,32 @@ import data_anki as data
 #   seq_len - 1 => T (but t=1...T is 1-based, whereas our t=0...,seq_len-1 is 0-based)
 #
 
-max_sentence_len = 20
-max_sentence_len = 6
-N = 64
-N = 4
+
+parser = argparse.ArgumentParser()
+# N => N
+# S => max_sentence_length
+# L => num_layers
+# H => hidden_size
+parser.add_argument('spec', default='N=16;S=10;L=1;H=64', type=str, help='format: N=16;S=10;L=1;H=64')
+args = parser.parse_args()
+# settings = args.spec
+
+# settings = 'N=128;S=20;L=2;H=96'
+# settings = 'N=4;S=5;L=2;H=32'
+# settings = 'N=128;S=20;L=1;H=96'
+
+settings_dict = {}
+for setting in args.spec.split(';'):
+    split_setting = setting.split('=')
+    k = split_setting[0]
+    v = int(split_setting[1])
+    settings_dict[k] = v
+N = settings_dict['N']
+max_sentence_len = settings_dict['S']
+num_layers = settings_dict['L']
+hidden_size = settings_dict['H']
+
 print_every = 16  # should be even, so matches teacher_forcing == False
-hidden_size = 128
-num_layers = 2
 
 
 training = []
@@ -70,12 +90,25 @@ def cudafy(x):
     return x
 
 
+def cuda_sync():
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+
+
 encoder_batch = cudafy(encoder_batch)
 decoder_batch = cudafy(decoder_batch)
 
 
 torch.manual_seed(123)
 np.random.seed(123)
+
+
+"""
+stub out kernprof things, if not present
+"""
+if 'profile' not in globals():
+    def profile(fn):
+        return fn
 
 
 class Encoder(nn.Module):
@@ -99,113 +132,117 @@ class Encoder(nn.Module):
 
 
 class AlignmentModel(nn.Module):
+    """
+    Input to this is:
+    - from the encoder, we have a batch of outputs, ie:
+        [seq_len, batch_size, hidden_size * 2]
+        (* 2, because bidirectional)
+    - from the decoder, we have the previous state, also batched:
+        [batch_size, hidden_size]
+        (just batch_size, since not bidirectional)
+
+    Then, conceptually, we want to do something like:
+    - for each of the timesteps, t=0, ..., seq_len - 1, from the encoder
+      outputs, do something like dot product with the decoder state
+    - then, we'll get a distribution over the timesteps t of the encoder
+    - and we softmax it, so it really is a probability distribution
+
+    We do this for each member of the batch
+
+    So, the output will have dimensions, to within a transpose, of:
+      [seq_len][batch_size]
+
+    In terms of the decoder, we'll only evaluate a single timestep here,
+    although can be batched. Therefore decoder timestep doesnt figure in the
+    output dimensinos
+
+    In terms of hidden_size, since we're dot-producting that out, and getting
+    a distribution over seq_len, for each of the batch_size, it doesnt
+    figure in the output dimensions
+
+    So, overall we're going to have:
+
+    [seq_len][batch_size] = f(
+        [seq_len, batch_size, hidden_size * 2],
+        [batch_size, hidden_size]
+
+    The dot products are between, for each member of batch_size, a single
+    timestep from the encoder, and the decoder previous state vector,
+    which is hidden_size long. there is no seq_len in the decoder input to
+    this forward
+
+    We're going to call this forward for each timestep in the decoder,
+    producing a distribution over the seq_len timesteps t of the encoder
+    each time, and also batched
+
+    As far as flattening, impelmenting this, we can flatten out the
+    incoming encoder outputs to:
+    [seq_len * batch_size][hidden_size * 2]
+
+    ... then concatenate with the decoder prev state, and pass through
+    a Linear layer ... oh, not sure if that'll work
+    Lets just use the formula in the paper :-)
+
+    Formula in the paper is:
+
+    x[t_enc] = v dot tanh(W @ dec_prev_state + U @ enc_out[t_enc])
+
+    Then:
+    x = soft_max(x)
+
+    For us, this is all batched, so:
+    - dec_prev_state is [batch_size][hidden_size]
+    - enc_out is [seq_len][batch_size][hidden_size * 2]
+
+    And we have:
+    - W is [hidden_size][hidden_size]
+    - U is [hidden_size][hidden_size * 2]
+    - v is [hidden_size]
+
+    So, for W @ dec_prev_state, we can do:
+    - dec_prev_state @ W
+      => [batch_size][hidden_size]
+    For U @ enc_out:
+    - enc_out @ U.transpose(0, 1)   (flattening enc_out appropriatley, then unflattening)
+      => [seq_len][batch_size][hidden_size]
+    - to add these, we need to expand out dec_prev_state @ W to:
+          [seq_len][batch_size][hidden_size]
+      ... then we can add
+      ... take tanh
+      ... dot with v giving:
+         [seq_len][batch_size]
+      Then we need to transpose to:
+          [batch_size][seq_len]
+        ... take softmax
+     We are done :-)
+    """
+
     def __init__(self, seq_len, hidden_size):
         super().__init__()
         self.seq_len = seq_len
         self.hidden_size = hidden_size
 
         self.W = nn.Parameter(
-            torch.rand(hidden_size, hidden_size) * 0.1)
+            torch.rand(num_layers * hidden_size, num_layers * hidden_size) * 0.1)
         self.U = nn.Parameter(
-            torch.rand(hidden_size, 2 * hidden_size) * 0.1)
+            torch.rand(num_layers * hidden_size, 2 * hidden_size) * 0.1)
         self.v = nn.Parameter(
             torch.rand(hidden_size) * 0.1)
 
+    @profile
     def forward(self, enc_out, prev_dec_state):
-        """
-        Input to this is:
-        - from the encoder, we have a batch of outputs, ie:
-            [seq_len, batch_size, hidden_size * 2]
-            (* 2, because bidirectional)
-        - from the decoder, we have the previous state, also batched:
-            [batch_size, hidden_size]
-            (just batch_size, since not bidirectional)
-
-        Then, conceptually, we want to do something like:
-        - for each of the timesteps, t=0, ..., seq_len - 1, from the encoder
-          outputs, do something like dot product with the decoder state
-        - then, we'll get a distribution over the timesteps t of the encoder
-        - and we softmax it, so it really is a probability distribution
-
-        We do this for each member of the batch
-
-        So, the output will have dimensions, to within a transpose, of:
-          [seq_len][batch_size]
-
-        In terms of the decoder, we'll only evaluate a single timestep here,
-        although can be batched. Therefore decoder timestep doesnt figure in the
-        output dimensinos
-
-        In terms of hidden_size, since we're dot-producting that out, and getting
-        a distribution over seq_len, for each of the batch_size, it doesnt
-        figure in the output dimensions
-
-        So, overall we're going to have:
-
-        [seq_len][batch_size] = f(
-            [seq_len, batch_size, hidden_size * 2],
-            [batch_size, hidden_size]
-
-        The dot products are between, for each member of batch_size, a single
-        timestep from the encoder, and the decoder previous state vector,
-        which is hidden_size long. there is no seq_len in the decoder input to
-        this forward
-
-        We're going to call this forward for each timestep in the decoder,
-        producing a distribution over the seq_len timesteps t of the encoder
-        each time, and also batched
-
-        As far as flattening, impelmenting this, we can flatten out the
-        incoming encoder outputs to:
-        [seq_len * batch_size][hidden_size * 2]
-
-        ... then concatenate with the decoder prev state, and pass through
-        a Linear layer ... oh, not sure if that'll work
-        Lets just use the formula in the paper :-)
-
-        Formula in the paper is:
-
-        x[t_enc] = v dot tanh(W @ dec_prev_state + U @ enc_out[t_enc])
-
-        Then:
-        x = soft_max(x)
-
-        For us, this is all batched, so:
-        - dec_prev_state is [batch_size][hidden_size]
-        - enc_out is [seq_len][batch_size][hidden_size * 2]
-
-        And we have:
-        - W is [hidden_size][hidden_size]
-        - U is [hidden_size][hidden_size * 2]
-        - v is [hidden_size]
-
-        So, for W @ dec_prev_state, we can do:
-        - dec_prev_state @ W
-          => [batch_size][hidden_size]
-        For U @ enc_out:
-        - enc_out @ U.transpose(0, 1)   (flattening enc_out appropriatley, then unflattening)
-          => [seq_len][batch_size][hidden_size]
-        - to add these, we need to expand out dec_prev_state @ W to:
-              [seq_len][batch_size][hidden_size]
-          ... then we can add
-          ... take tanh
-          ... dot with v giving:
-             [seq_len][batch_size]
-          Then we need to transpose to:
-              [batch_size][seq_len]
-            ... take softmax
-         We are done :-)
-        """
-
-        prev_dec_state = prev_dec_state.view(batch_size, hidden_size)
+        prev_dec_state = prev_dec_state.view(batch_size, num_layers * hidden_size)
         prev_dec_state_W = prev_dec_state @ self.W
         enc_out_U = enc_out.view(seq_len * batch_size, hidden_size * 2) @ \
             self.U.transpose(0, 1)
         enc_out_U = enc_out_U.view(seq_len, batch_size, hidden_size)
         prev_dec_state_W_exp = prev_dec_state_W \
-            .view(1, batch_size, hidden_size) \
-            .expand(seq_len, batch_size, hidden_size)
-        x = F.tanh(enc_out_U + prev_dec_state_W_exp)
+            .view(num_layers, 1, batch_size, hidden_size) \
+            .expand(num_layers, seq_len, batch_size, hidden_size)
+        print('enc_out_U.size()', enc_out_U.size())
+        print('prev_dec_state_W_exp.size()', prev_dec_state_W_exp.size())
+        x = enc_out_U + prev_dec_state_W_exp
+        x = F.tanh(x)
         x = x.view(seq_len * batch_size, hidden_size) @ self.v.view(-1, 1)
         x = x.view(seq_len, batch_size)
         x = x.transpose(0, 1)
