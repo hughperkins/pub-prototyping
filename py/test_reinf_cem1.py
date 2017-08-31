@@ -12,6 +12,7 @@ num_theta_samples = 10
 num_samples_per_theta = 10
 initial_variance = 10
 num_elite = 3
+max_steps_per_episode = 2000
 
 
 class Policy(nn.Module):
@@ -35,7 +36,7 @@ def run_episode(policy, render):
     x = env.reset()
     reward = 0
     # multinomial_res_nodes = []
-    for _ in range(1000):
+    for _ in range(max_steps_per_episode):
         if render:
             env.render()
         a_idx = policy(autograd.Variable(torch.from_numpy(x.astype(np.float32)).view(1, -1)))
@@ -133,7 +134,7 @@ while True:
             sum_reward_this_theta += reward
         avg_reward_this_theta = sum_reward_this_theta / num_samples_per_theta
         res.append({'theta': theta, 'reward': avg_reward_this_theta})
-    sum_reward += avg_reward_this_theta
+        sum_reward += avg_reward_this_theta
     # print(res)
     res.sort(key=lambda x: x['reward'], reverse=True)
     elite_samples = res[:num_elite]
