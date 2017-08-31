@@ -7,11 +7,11 @@ import numpy as np
 
 
 num_hidden = 4
-print_every = 100
-num_theta_samples = 100
-num_samples_per_theta = 100
+print_every = 1
+num_theta_samples = 10
+num_samples_per_theta = 10
 initial_variance = 10
-num_elite = 10
+num_elite = 3
 
 
 class Policy(nn.Module):
@@ -59,16 +59,16 @@ def run_episode(policy, render):
 
 
 env = gym.make('CartPole-v0')
-print('action_space', env.action_space)
-print(dir(env.action_space))
-print('num_actions', env.action_space.n)
-print('num_inputs', env.observation_space.shape[0])
+# print('action_space', env.action_space)
+# print(dir(env.action_space))
+# print('num_actions', env.action_space.n)
+# print('num_inputs', env.observation_space.shape[0])
 policy = Policy(
     num_inputs=env.observation_space.shape[0],
     num_hidden=num_hidden,
     num_actions=env.action_space.n)
 # opt = optim.Adam(params=policy.parameters(), lr=0.001)
-print('observation_space', env.observation_space)
+# print('observation_space', env.observation_space)
 
 
 def tensor_list_to_tensor(l):
@@ -76,11 +76,35 @@ def tensor_list_to_tensor(l):
     N = len(l)
     t = torch.zeros(N, *shape)
     # print('t.size()', t.size())
+    for i in range(N):
+        t[i] = l[i]
     return t
     # asdfsdf
 
 
-episode = 0
+def draw_theta(theta_mu, theta_var):
+    """
+    assumes theta_mu and theta_var are both lists of torch tensors
+    thus, returns also a list, of torch tensors
+    """
+    theta = []
+    # for i, p in enumerate(policy.parameters()):
+    for i, mu in enumerate(theta_mu):
+        var = theta_var[i]
+        _theta = torch.normal(mu, var.sqrt())
+        # p.data = this_theta
+        theta.append(_theta)
+    return theta
+
+
+def assign_theta_to_params(params, theta):
+    for i, p in enumerate(params):
+        p.data.copy_(theta[i])
+# def render_example():
+
+
+# episode = 0
+iteration = 0
 sum_reward = 0
 # theta = [p for p in policy.parameters()]
 theta_shapes = [p.data.shape for p in policy.parameters()]
@@ -88,7 +112,9 @@ theta_mu = []
 theta_var = []
 for shape in theta_shapes:
     theta_mu.append(torch.zeros(shape))
-    var = torch.ones(shape) * 10
+    var = torch.ones(shape)
+    var *= initial_variance
+    print('var', var)
     theta_var.append(var)
 # print('theta_shapes', theta_shapes)
 # print(theta_mu)
@@ -97,37 +123,36 @@ for shape in theta_shapes:
 while True:
     # opt.zero_grad()
     res = []
-    for n in range(num_samples):
-        render = episode % print_every == 0 and n % (num_samples // 3) == 0
-        theta = []
-        for i, p in enumerate(policy.parameters()):
-            this_theta = torch.normal(theta_mu[i], theta_var[i].sqrt())
-            p.data = this_theta
-            theta.append(this_theta)
-        reward = run_episode(policy=policy, render=render)
-        res.append({'theta': theta, 'reward': reward})
-    sum_reward += reward
+    for n in range(num_theta_samples):
+        theta = draw_theta(theta_mu=theta_mu, theta_var=theta_var)
+        assign_theta_to_params(params=policy.parameters(), theta=theta)
+        sum_reward_this_theta = 0
+        for j in range(num_samples_per_theta):
+            # render = episode % print_every == 0 and n % (num_samples // 3) == 0
+            reward = run_episode(policy=policy, render=False)
+            sum_reward_this_theta += reward
+        avg_reward_this_theta = sum_reward_this_theta / num_samples_per_theta
+        res.append({'theta': theta, 'reward': avg_reward_this_theta})
+    sum_reward += avg_reward_this_theta
     # print(res)
     res.sort(key=lambda x: x['reward'], reverse=True)
     elite_samples = res[:num_elite]
+    # print('elite_samples', elite_samples)
     for i, p in enumerate(policy.parameters()):
-        shape = p.data.shape
-        # this_new_theta = torch.zeros(shape)
         this_elite_thetas = tensor_list_to_tensor([result['theta'][i] for result in elite_samples])
+        # print('this_elite_thetas', this_elite_thetas)
         this_new_mu = this_elite_thetas.mean(dim=0)
-        # elite_vars = tensor_list_to_tensor([result['theta'][i] for result in elite_samples])
         this_new_var = this_elite_thetas.var(dim=0)
         theta_mu[i] = this_new_mu
         theta_var[i] = this_new_var
-        # this_new_var = torch.
 
-    # print(res[:3])
-    # asdfad
-    # loss = - reward
-    # loss.backward()
-    # help(opt.step)
-    # opt.step()
-    if episode % print_every == 0:
-        print('episode %s avg_reward %s reward %s' % (episode, sum_reward / print_every, reward))
+    if iteration % print_every == 0:
+        print('theta_mu', theta_mu)
+        print('theta_var', theta_var)
+        print('iteration %s avg_reward %s' % (iteration, sum_reward / print_every))
+        # render_example()
+        assign_theta_to_params(params=policy.parameters(), theta=theta_mu)
+        run_episode(policy=policy, render=True)
         sum_reward = 0
-    episode += 1
+    iteration += 1
+    # asdfasd
