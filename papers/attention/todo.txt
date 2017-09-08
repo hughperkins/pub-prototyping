@@ -1,0 +1,2 @@
+1. get attention version working with 2 layers
+2. get some comparison between rnn adn attention, however simple/dumb :-)
