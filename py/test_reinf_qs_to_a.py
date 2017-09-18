@@ -25,9 +25,6 @@ class QEstimator(nn.Module):
         self.h2 = nn.Linear(num_hidden, num_actions)
 
     def forward(self, x):
-        # a_hot = torch.zeros(1, self.num_actions)
-        # a_hot[0][a] = 1.0
-        # x = torch.cat((x, autograd.Variable(a_hot)), 1)
         x = self.h1(x)
         x = F.tanh(x)
         x = self.h2(x)
@@ -39,7 +36,7 @@ def run_episode(opt, q_estimator, render, num_actions):
     at each step, we have:
 
     - s_t
-    - a function estimator, for q(s, a)
+    - a function estimator, for q(s), over all actions
 
     - we choose an action a_t, eg by e-greedy selection over actions for current state
     - we take this action, giving:
@@ -72,17 +69,12 @@ def run_episode(opt, q_estimator, render, num_actions):
             # exploit
             _, a_t = qv_t.data.max(dim=-1)
             a_t = a_t[0]
-            # print('a_t', a_t)
 
         x_next_t, r_t, done, info = env.step(a_t)
         x_next_t = torch.from_numpy(x_next_t.astype(np.float32))
         if prev is not None:
             opt.zero_grad()
             prev['qv_next_t'] = qv_t
-            # print('prev qv_t', prev['qv_t'])
-            # print('prev a_t', prev['a_t'])
-            # print('type prev a_t', type(prev['a_t']))
-            # print('qv_next_d.data', prev['qv_next_t'].data)
             error = prev['r_t'] + prev['qv_next_t'].data[a_t] \
                 - prev['qv_t'][prev['a_t']]
             loss = error * error
