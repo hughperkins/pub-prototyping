@@ -1,14 +1,17 @@
 import gym
 import time
 import torch
+import argparse
+import math
 from torch import nn, autograd, optim
 import torch.nn.functional as F
 import numpy as np
+from collections import namedtuple
 
 
 num_hidden = 8
-print_every = 100
-max_steps_per_episode = 2000
+# print_every = 100
+# max_steps_per_episode = 2000
 exploration_prob = 0.1
 
 
@@ -31,7 +34,7 @@ class QEstimator(nn.Module):
         return x
 
 
-def run_episode(opt, q_estimator, render, num_actions):
+def run_episode(max_steps_per_episode, env, opt, q_estimator, render, num_actions):
     """
     at each step, we have:
 
@@ -106,25 +109,74 @@ def run_episode(opt, q_estimator, render, num_actions):
     return sum_reward, sum_loss
 
 
-env = gym.make('CartPole-v0')
-q_estimator = QEstimator(
-    num_obs_features=env.observation_space.shape[0], num_actions=env.action_space.n)
-opt = optim.Adam(params=q_estimator.parameters(), lr=0.001)
+class MountainCar(object):
+    def __init__(self):
+        self.observation_space = namedtuple('ObservationSpace', ['shape'])([2])
+        self.action_space = namedtuple('ActionSpace', ['n'])(3)
+        self.reset()
 
-iteration = 0
-sum_reward = 0
-sum_loss = 0
+    def reset(self):
+        # self.s = np.zeros(-0.6 + np.random.random() * 0.2, 0.0)
+        self.x = -0.6 + np.random.random() * 0.2
+        self.v = 0.0
+        return np.array([self.x, self.v])
 
-while True:
-    reward, loss = run_episode(
-        opt=opt,
-        q_estimator=q_estimator,
-        render=False, num_actions=env.action_space.n)
-    sum_loss += loss
-    sum_reward += reward
+    def render(self):
+        # print(self.x, self.v)
+        x_c = (self.x - (-1.2)) / 1.8 * 80
+        print('|' + ' ' * int(x_c) + '*' + (80 - int(x_c)) * ' ' + '| %.1f' % self.x)
 
-    if iteration % print_every == 0:
-        print('iteration %s avg_reward %s loss %s' % (iteration, sum_reward / print_every, sum_loss))
-        sum_reward = 0
-        sum_loss = 0
-    iteration += 1
+    def step(self, a):
+        a -= 1
+        self.v += 0.001 * a - 0.0025 * math.cos(3 * self.x)
+        self.v = max(-0.07, self.v)
+        self.v = min(self.v, 0.06999999)
+        self.x += self.v
+        if self.x < -1.2:
+            self.x = -1.2
+            self.v = 0.0
+        done = self.x >= 0.5
+        r = 0 if done else -1
+        return np.array([self.x, self.v]), r, done, None
+
+
+def run(env, print_every, max_steps_per_episode, render):
+    if env == 'cartpole':
+        env = gym.make('CartPole-v0')
+    elif env == 'mountaincar':
+        env = MountainCar()
+    else:
+        raise Exception('env %s not recognized' % env)
+    q_estimator = QEstimator(
+        num_obs_features=env.observation_space.shape[0], num_actions=env.action_space.n)
+    opt = optim.Adam(params=q_estimator.parameters(), lr=0.001)
+
+    iteration = 0
+    sum_reward = 0
+    sum_loss = 0
+
+    while True:
+        reward, loss = run_episode(
+            max_steps_per_episode=max_steps_per_episode,
+            env=env,
+            opt=opt,
+            q_estimator=q_estimator,
+            render=render, num_actions=env.action_space.n)
+        sum_loss += loss
+        sum_reward += reward
+
+        if iteration % print_every == 0:
+            print('iteration %s avg_reward %s loss %s' % (iteration, sum_reward / print_every, sum_loss))
+            sum_reward = 0
+            sum_loss = 0
+        iteration += 1
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--env', type=str, default='cartpole')
+    parser.add_argument('--print-every', type=int, default=100)
+    parser.add_argument('--max-steps-per-episode', type=int, default=2000)
+    parser.add_argument('--render', action='store_true')
+    args = parser.parse_args()
+    run(**args.__dict__)
