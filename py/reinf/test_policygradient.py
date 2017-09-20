@@ -26,16 +26,23 @@ class Policy(nn.Module):
 
 def run_episode(env, policy, render=False):
     x = env.reset()
+    # print('x', x)
+    # print('type(x)', type(x))
     actions = []
     rewards = []
     states = []
-    for _ in range(1000):
+    for _ in range(10000):
         if render:
             env.render()
         a = policy(autograd.Variable(torch.from_numpy(x.astype(np.float32)).view(1, -1)))
         states.append(x)
         actions.append(a)
         x, r, done, info = env.step(a.data[0][0])
+        # print('x', x)
+        # print('x.shape', x.shape)
+        # print('type(x)', type(x))
+        # print('r', r)
+        # print('type(r)', type(r))
         rewards.append(r)
         if done:
             break
@@ -66,6 +73,7 @@ def run(env):
         sum_epochs += 1
         for a in actions:
             a.reinforce(total_reward)
+        # print('actions', actions)
         autograd.backward(actions, [None] * len(actions))
         opt.step()
         if time.time() - last >= 1.0:

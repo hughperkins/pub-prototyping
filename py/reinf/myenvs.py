@@ -30,7 +30,7 @@ class MountainCar(object):
             self.x = -1.2
             self.v = 0.0
         done = self.x >= 0.5
-        r = 0 if done else -1
+        r = 0.0 if done else -1.0
         return np.array([self.x, self.v]), r, done, None
 
 
