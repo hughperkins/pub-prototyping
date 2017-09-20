@@ -877,7 +877,7 @@ iteration 13800 avg_reward 196.89 loss 3622746.104610271
 iteration 13900 avg_reward 198.9 loss 4277161.661016781
 ```
 
-test_es1.py 1fbbd97
+test_policygradient.py fa2f423
 ```
 episode 112 elapsed 1s avg reward 20.3
 episode 212 elapsed 2s avg reward 24.7
