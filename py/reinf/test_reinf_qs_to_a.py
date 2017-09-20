@@ -1,12 +1,11 @@
 import gym
+import myenvs
 import time
 import torch
 import argparse
-import math
 from torch import nn, autograd, optim
 import torch.nn.functional as F
 import numpy as np
-from collections import namedtuple
 
 
 num_hidden = 8
@@ -109,42 +108,11 @@ def run_episode(max_steps_per_episode, env, opt, q_estimator, render, num_action
     return sum_reward, sum_loss
 
 
-class MountainCar(object):
-    def __init__(self):
-        self.observation_space = namedtuple('ObservationSpace', ['shape'])([2])
-        self.action_space = namedtuple('ActionSpace', ['n'])(3)
-        self.reset()
-
-    def reset(self):
-        # self.s = np.zeros(-0.6 + np.random.random() * 0.2, 0.0)
-        self.x = -0.6 + np.random.random() * 0.2
-        self.v = 0.0
-        return np.array([self.x, self.v])
-
-    def render(self):
-        # print(self.x, self.v)
-        x_c = (self.x - (-1.2)) / 1.8 * 80
-        print('|' + ' ' * int(x_c) + '*' + (80 - int(x_c)) * ' ' + '| %.1f' % self.x)
-
-    def step(self, a):
-        a -= 1
-        self.v += 0.001 * a - 0.0025 * math.cos(3 * self.x)
-        self.v = max(-0.07, self.v)
-        self.v = min(self.v, 0.06999999)
-        self.x += self.v
-        if self.x < -1.2:
-            self.x = -1.2
-            self.v = 0.0
-        done = self.x >= 0.5
-        r = 0 if done else -1
-        return np.array([self.x, self.v]), r, done, None
-
-
 def run(env, print_every, max_steps_per_episode, render):
     if env == 'cartpole':
         env = gym.make('CartPole-v0')
     elif env == 'mountaincar':
-        env = MountainCar()
+        env = myenvs.MountainCar()
     else:
         raise Exception('env %s not recognized' % env)
     q_estimator = QEstimator(
