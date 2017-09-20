@@ -1,9 +1,10 @@
-import gym
+import argparse
 import time
 import torch
 from torch import nn, autograd, optim
 import torch.nn.functional as F
 import numpy as np
+import myenvs
 
 
 class Policy(nn.Module):
@@ -12,20 +13,25 @@ class Policy(nn.Module):
     ie no stochastic sampling
     given any state as input
     """
-    def __init__(self, num_inputs, num_actions):
+    def __init__(self, num_inputs, num_actions, num_hidden=8):
         super().__init__()
         self.num_actions = num_actions
         self.num_inputs = num_inputs
-        self.h1 = nn.Linear(num_inputs, num_actions)
+        self.h1 = nn.Linear(num_inputs, num_hidden)
+        self.h2 = nn.Linear(num_hidden, num_actions)
 
     def forward(self, x):
         # print('x.data.shape', x.data.shape)
         # print('self.num_inputs', self.num_inputs)
         # print('self.num_actions', self.num_actions)
         x = self.h1(x)
-        _, x = x.max(dim=1)
+        x = F.tanh(x)
+        x = self.h2(x)
+        # _, x = x.max(dim=1)
+        x = F.softmax(x)
+        a = torch.multinomial(x)
         # print('x', x)
-        return x
+        return a
 
 
 class ES(nn.Module):
@@ -36,42 +42,72 @@ class ES(nn.Module):
         return x
 
 
-env = gym.make('CartPole-v0')
-
-
-def run_episode(policy):
+def run_episode(env, policy, render=False):
     x = env.reset()
-    reward = 0
+    # reward = 0
+    actions = []
+    rewards = []
+    states = []
     for _ in range(1000):
-        env.render()
-        a_idx = policy(autograd.Variable(torch.from_numpy(x.astype(np.float32)).view(1, -1)))
+        if render:
+            env.render()
+        a = policy(autograd.Variable(torch.from_numpy(x.astype(np.float32)).view(1, -1)))
+        # a = a_node.data[0]
+        states.append(x)
+        actions.append(a)
         # a_idx = a_idx.data[0]
         # print('a_idx', a_idx.data[0])
         # a = env.action_space.sample()
-        x, r, done, info = env.step(a_idx.data[0])
+        # print('a', a)
+        x, r, done, info = env.step(a.data[0][0])
         # print('a', a, 'x', x, 'r', r, 'done', done)
-        reward += r
+        # reward += r
+        rewards.append(r)
         if done:
             break
-        time.sleep(0.1)
-    return reward
+        # time.sleep(0.1)
+    return states, actions, rewards
 
 
-print('action_space', env.action_space)
-print(dir(env.action_space))
-print('num_actions', env.action_space.n)
-print('num_inputs', env.observation_space.shape[0])
-policy = Policy(num_inputs=env.observation_space.shape[0], num_actions=env.action_space.n)
-# opt = optim.Adam(params=model.parameters(), lr=0.001)
-print('observation_space', env.observation_space)
+def run(env):
+    env = myenvs.get_env_by_name(env_name=env)
 
-episode = 0
-while True:
-    # opt.zero_grad()
-    reward = run_episode(policy=policy)
-    loss = - reward
-    # loss.backward()
-    # help(opt.step)
-    # opt.step()
-    print('episode %s reward %s' % (episode, reward))
-    episode += 1
+    print('action_space', env.action_space)
+    print(dir(env.action_space))
+    print('num_actions', env.action_space.n)
+    print('num_inputs', env.observation_space.shape[0])
+    policy = Policy(num_inputs=env.observation_space.shape[0], num_actions=env.action_space.n)
+    opt = optim.Adam(params=policy.parameters(), lr=0.001)
+    print('observation_space', env.observation_space)
+
+    episode = 0
+    last = time.time()
+    sum_epochs = 0
+    sum_rewards = 0
+    start = time.time()
+    while True:
+        opt.zero_grad()
+        states, actions, rewards = run_episode(env=env, policy=policy)
+        total_reward = np.sum(rewards)
+        sum_rewards += total_reward
+        sum_epochs += 1
+        # print('total_reward %s' % total_reward)
+        for a in actions:
+            a.reinforce(total_reward)
+        autograd.backward(actions, [None] * len(actions))
+        # loss = - reward
+        # loss.backward()
+        # help(opt.step)
+        opt.step()
+        if time.time() - last >= 1.0:
+            print('episode %s elapsed %ss avg reward %.1f' % (episode, int(time.time() - start), sum_rewards / sum_epochs))
+            sum_epochs = 0
+            sum_rewards = 0
+            last = time.time()
+        episode += 1
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--env', type=str, default='cartpole')
+    args = parser.parse_args()
+    run(**args.__dict__)

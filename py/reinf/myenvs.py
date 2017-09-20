@@ -32,3 +32,13 @@ class MountainCar(object):
         done = self.x >= 0.5
         r = 0 if done else -1
         return np.array([self.x, self.v]), r, done, None
+
+
+def get_env_by_name(env_name):
+    if env_name == 'cartpole':
+        import gym
+        return gym.make('CartPole-v0')
+    elif env_name == 'mountaincar':
+        return MountainCar()
+    else:
+        raise Exception('env %s not recognized' % env_name)
