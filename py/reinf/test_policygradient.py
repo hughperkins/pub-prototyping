@@ -24,14 +24,6 @@ class Policy(nn.Module):
         return a
 
 
-class ES(nn.Module):
-    def __init__(self, num_params):
-        self.num_params = num_params
-
-    def forward(self, x):
-        return x
-
-
 def run_episode(env, policy, render=False):
     x = env.reset()
     actions = []
