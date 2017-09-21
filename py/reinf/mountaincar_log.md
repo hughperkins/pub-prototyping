@@ -23,3 +23,24 @@ episode 84 elapsed 368s avg reward -10000.0
 episode 85 elapsed 373s avg reward -10000.0
 episode 86 elapsed 376s avg reward -6345.0
 ```
+
+try with maximum episode length 500, worse:
+```
+episode 624 elapsed 133s avg reward -500.0
+episode 629 elapsed 134s avg reward -500.0
+episode 634 elapsed 135s avg reward -500.0
+episode 639 elapsed 136s avg reward -500.0
+episode 644 elapsed 137s avg reward -500.0
+episode 649 elapsed 139s avg reward -500.0
+episode 654 elapsed 140s avg reward -500.0
+episode 659 elapsed 141s avg reward -500.0
+episode 664 elapsed 142s avg reward -500.0
+episode 669 elapsed 143s avg reward -500.0
+episode 674 elapsed 144s avg reward -500.0
+episode 679 elapsed 145s avg reward -500.0
+episode 684 elapsed 146s avg reward -500.0
+episode 689 elapsed 147s avg reward -500.0
+episode 694 elapsed 148s avg reward -500.0
+episode 699 elapsed 149s avg reward -500.0
+episode 704 elapsed 150s avg reward -500.0
+```
