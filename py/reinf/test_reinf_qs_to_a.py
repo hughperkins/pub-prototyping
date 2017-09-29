@@ -60,7 +60,10 @@ def run_episode(max_steps_per_episode, env, opt, q_estimator, render, num_action
     sum_reward = 0
     sum_loss = 0
     prev = None
-    for _ in range(max_steps_per_episode):
+    step = 0
+    print('run')
+    while True:
+    # for _ in range(max_steps_per_episode):
         if render:
             env.render()
         qv_t = q_estimator(autograd.Variable(x_t.view(1, -1)))[0]
@@ -95,15 +98,22 @@ def run_episode(max_steps_per_episode, env, opt, q_estimator, render, num_action
 
         if done:
             break
+        step += 1
+        if step >= max_steps_per_episode:
+            abandoned = True
+            break
 
         x_t = x_next_t
 
+    # if not abandoned:
+    #     print('learn...')
     opt.zero_grad()
     error = prev['r_t'] + 0 - prev['qv_t'][prev['a_t']]
     loss = error * error
     sum_loss += loss.data[0]
     loss.backward()
     opt.step()
+        # print('...done')
 
     return sum_reward, sum_loss
 

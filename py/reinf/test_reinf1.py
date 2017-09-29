@@ -6,16 +6,23 @@ import torch.nn.functional as F
 import numpy as np
 
 
+num_hidden = 4
+print_every = 100
+
+
 class Policy(nn.Module):
     """
     Given parameters, calculates probability of any action,
     given any state as input
     samples from these probabilities
     """
-    def __init__(self, num_inputs, num_actions):
+    def __init__(self, num_inputs, num_hidden, num_actions):
         super().__init__()
         self.num_actions = num_actions
         self.num_inputs = num_inputs
+        self.num_hidden = num_hidden
+        # self.h1 = nn.Linear(num_inputs, num_hidden)
+        # self.h2 = nn.Linear(num_hidden, num_actions)
         self.h1 = nn.Linear(num_inputs, num_actions)
 
     def forward(self, x):
@@ -23,6 +30,8 @@ class Policy(nn.Module):
         # print('self.num_inputs', self.num_inputs)
         # print('self.num_actions', self.num_actions)
         x = self.h1(x)
+        # x = F.tanh(x)
+        # x = self.h2(x)
         x = F.softmax(x)
         multinomial_res = torch.multinomial(x, num_samples=1)
         # x =
@@ -50,9 +59,11 @@ def run_episode(policy, render):
             break
         # time.sleep(0.02)
 
-    avg_reward = reward / len(multinomial_res_nodes)
+    # avg_reward = reward / len(multinomial_res_nodes)
+    # reward = reward - 18
+    reward = reward * reward
     for node in multinomial_res_nodes:
-        node.reinforce(avg_reward)
+        node.reinforce(reward)
     return reward
 
 
@@ -61,13 +72,15 @@ print('action_space', env.action_space)
 print(dir(env.action_space))
 print('num_actions', env.action_space.n)
 print('num_inputs', env.observation_space.shape[0])
-policy = Policy(num_inputs=env.observation_space.shape[0], num_actions=env.action_space.n)
+policy = Policy(
+    num_inputs=env.observation_space.shape[0],
+    num_hidden=num_hidden,
+    num_actions=env.action_space.n)
 opt = optim.Adam(params=policy.parameters(), lr=0.001)
 print('observation_space', env.observation_space)
 
 episode = 0
 sum_reward = 0
-print_every = 1000
 while True:
     opt.zero_grad()
     render = episode % print_every == 0
