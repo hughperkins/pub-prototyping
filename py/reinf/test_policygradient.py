@@ -1,5 +1,6 @@
 import argparse
 import time
+import math
 import torch
 from torch import nn, autograd, optim
 import torch.nn.functional as F
@@ -51,7 +52,7 @@ def run_episode(env, policy, render=False):
         if done:
             break
         step += 1
-        if step >= 20000:
+        if step >= 2000:
             abandoned = True
             break
     return states, actions, rewards, abandoned
@@ -75,14 +76,19 @@ def run(env):
     sum_rewards = 0
     abandoned_count = 0
     start = time.time()
+    history_size = 100
+    reward_history = torch.zeros(history_size)
+    history_count = 0
+    next_history_idx = 0
     while True:
-        print('run')
+        # print('run')
         states, actions, rewards, abandoned = run_episode(env=env, policy=policy)
         total_reward = np.sum(rewards)
         sum_rewards += total_reward
         sum_epochs += 1
-        if not abandoned:
-            print('learn')
+        # if not abandoned:
+        if True:
+            # print('learn')
             opt.zero_grad()
             sample = True
             if sample:
@@ -90,17 +96,29 @@ def run(env):
                 states = [states[i] for i in sample_idxes]
                 actions = [actions[i] for i in sample_idxes]
                 # states = [states[i] for i in sample_idxes]
+            hist_mean = reward_history.sum()
+            std = 1
+            if history_count > 0:
+                hist_mean /= history_count
+                std = (reward_history[:history_count]).std()
+            # print('hist_mean', hist_mean)
+            reinforce_amount = total_reward - hist_mean
+            if std > 0:
+                reinforce_amount /= std
             for a in actions:
-                a.reinforce(total_reward)
+                a.reinforce(reinforce_amount)
             # print('actions', actions)
             autograd.backward(actions, [None] * len(actions))
             opt.step()
-            print('done')
+            reward_history[next_history_idx] = total_reward
+            history_count = min(history_size, history_count + 1)
+            next_history_idx = (next_history_idx + 1) % history_size
+            # print('done')
         else:
             abandoned_count += 1
         if time.time() - last >= 1.0:
-            print('episode %s elapsed %ss avg reward %.1f abondoned_prob %.2f' % (
-                episode, int(time.time() - start), sum_rewards / sum_epochs, abandoned_count / sum_epochs))
+            print('episode %s elapsed %ss avg reward %.1f hist_mean %.1f var %.1f abondoned_prob %.2f' % (
+                episode, int(time.time() - start), sum_rewards / sum_epochs, hist_mean, std, abandoned_count / sum_epochs))
             sum_epochs = 0
             sum_rewards = 0
             abandoned_count = 0
