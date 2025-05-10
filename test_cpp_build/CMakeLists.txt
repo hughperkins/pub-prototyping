@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
-project(SimpleTest)
 
-# set(CMAKE_CXX_COMPILER "/usr/bin/clang++-15" CACHE STRING "c++ compiler")
-# set(CMAKE_C_COMPILER "/usr/bin/clang-15" CACHE STRING "c compiler")
-# set(CMAKE_CXX_FLAGS "-stdlib=libc++" CACHE STRING "c++ flags")
-# set(CMAKE_EXE_LINKER_FLAGS "-fuse-ld=lld-15 -lc++ -lc++abi" CACHE STRING "linker flags")
+set(CMAKE_CXX_COMPILER "/usr/bin/clang++-15" CACHE STRING "c++ compiler" FORCE)
+set(CMAKE_C_COMPILER "/usr/bin/clang-15" CACHE STRING "c compiler" FORCE)
+set(CMAKE_CXX_FLAGS "-stdlib=libc++" CACHE STRING "c++ flags" FORCE)
+set(CMAKE_EXE_LINKER_FLAGS "-fuse-ld=lld-15 -lc++ -lc++abi" CACHE STRING "linker flags" FORCE)
+
+
+project(SimpleTest)
 
 # set(CMAKE_CXX_COMPILER_WORKS 1)  # Skip compiler test
 # set(CMAKE_CXX_LINKER_WORKS 1)    # Skip linker test
