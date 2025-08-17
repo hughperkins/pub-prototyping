@@ -42,11 +42,6 @@ def populate_base(particles: ti.types.NDArray[ti.f32, 1]) -> None:
     for i in ti.ndrange(num_particles):
         particles[i] = ti.randn()
 
-# @ti.kernel
-# def populate_data(particles: ti.types.NDArray[ti.f32, 1]) -> None:
-#     for i in ti.ndrange(num_particles):
-#         particles[i] = ti.randn() / 4 + 0.5
-
 @ti.kernel
 def move_particles(
        a: ti.types.NDArray[ti.math.vec2, 2],
@@ -60,13 +55,10 @@ def move_particles(
             pos_axes = (pos - X_MIN) / (X_MAX - X_MIN)
             i_idx = int(pos_axes * N)
             a[i_idx, j] = ti.math.vec2(1.0, 1.0)
-        # a[i, j] = ti.math.vec2(float(i) / M, float(j) / N)
 
 a = ti.ndarray(ti.math.vec2, (M, N))
-# fill(a)
 populate_base(particles_base)
 print('particles_base', particles_base.to_numpy())
-# print('a', a, a.to_numpy())
 print('a[50, 50]', a[50, 50])
 
 data_l = []
@@ -79,7 +71,6 @@ while len(data_l) < num_particles:
     # v = np.random.randint(500, 700) / 1000
     data_l.append(v)
         
-# particles_data.from_numpy(np.array([0.2, 0.21, 0.22, 0.6, 0.65, 0.7, 0.19, 0.17, 0.15, 0.68], dtype=np.float32))
 particles_data.from_numpy(np.array(data_l, dtype=np.float32))
 print('particles_data', particles_data.to_numpy())
 
@@ -121,24 +112,15 @@ def sample_batch(batch_size: int) -> tuple[torch.Tensor, torch.Tensor]:
     inputs_l, targets_l = [], []
     for b in range(batch_size):
         tau = np.random.rand()
-        # tau = 0.5
-        # print('tau', tau)
         x0 = np.random.randn()
         # print('x0', x0)
         x1 = np.random.choice(particles_data_np)
-        # print('x1', x1)
         x = (1 - tau) * x0 + tau * x1
-        # print('x', x)
-        # delta distance / delta tau
         dx_dtau = x1 - x0
-        # print("dx_dtau", dx_dtau)
-        # print(tau, x, dx_dtau)
         inputs_l.append((1, tau, x))
         targets_l.append(dx_dtau)
     inputs = torch.Tensor(inputs_l)
     targets = torch.Tensor(targets_l)
-    # print('inputs', inputs)
-    # print('targets', targets)
     return inputs, targets
 
 batch_size = 32
@@ -155,9 +137,7 @@ for it in range(10000):
     outputs = mlp(inputs)
     opt.zero_grad()
     targets = targets.unsqueeze(-1)
-    # print('outputs.shape', outputs.shape, 'targets.shape', targets.shape)
     loss = mse_loss(outputs, targets)
-    # print('loss', loss.item())
     if loss.item() > 100:
         print(inputs)
         print(targets)
@@ -165,7 +145,6 @@ for it in range(10000):
     losses_l.append(loss.item())
     loss.backward()
     opt.step()
-    # asdfadsf
 
 plt.plot(losses_l)
 plt.show()
@@ -174,10 +153,6 @@ mlp.eval()
 ```
 
 ```python
-# a.fill(0)
-# a_np = a.to_numpy()
-# a_np.fill(0)
-
 buffer = np.zeros((M, N), dtype=np.float32)
 
 mlp.eval()
@@ -192,15 +167,12 @@ def plot(a, x, y) -> None:
 
 num_lines = 10
 for x0 in np.arange(-5, 5, 10 / num_lines):
-    print("x0", x0)
     x = x0
     for tau in np.arange(0, 1 + dtau, dtau):
         inputs = torch.Tensor([[1, tau, x]])
         with torch.no_grad():
-            # print('inputs', inputs, inputs.shape)
             v = mlp(inputs)
         x += dtau * v
-        # print('x', x)
         plot(buffer, x, tau)
 plt.imshow(buffer)
 
@@ -217,7 +189,6 @@ for tau in np.arange(0, 1.2, 0.2):
         v_l.append(v[0].item())
     
     plt.plot(x_l, v_l, label=f"tau={tau}")
-    # plt.title(f"tau={tau}")
 example_inputs, example_targets = sample_batch(16)
 plt.scatter(example_inputs[:, 2], example_targets, label='sample_targets')
 with torch.no_grad():
