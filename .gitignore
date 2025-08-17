@@ -49,3 +49,5 @@ play.ipynb
 *.lprof
 
 lastfailed
+
+*.ipynb
